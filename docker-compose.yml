@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  api:
+    image: maven:3.9.6-eclipse-temurin-17
+    working_dir: /app
+    volumes:
+      - ./:/app
+      - ~/.m2:/root/.m2
+    ports:
+      - "8080:8080"
+    command: mvn spring-boot:run
+    environment:
+      - SERVER_PORT=8080
+      - SPRING_DATA_MONGODB_URI=mongodb://mongo:27017/maturity_db
+    depends_on:
+      - mongo
+
+  mongo:
+    image: mongo:latest
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  mongo_data:
