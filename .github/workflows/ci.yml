@@ -31,8 +31,16 @@ jobs:
           key: ${{ runner.os }}-sonar
           restore-keys: ${{ runner.os }}-sonar
 
-      - name: Build and Analyze
+      - name: Build and Test
+        run: mvn -B verify -Dspring.profiles.active=test
+
+      - name: Analyze with SonarCloud
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dspring.profiles.active=test
+        run: |
+          if [ -n "$SONAR_TOKEN" ]; then
+            mvn -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+          else
+            echo "⚠️ SONAR_TOKEN not found. Skipping SonarCloud analysis."
+          fi
