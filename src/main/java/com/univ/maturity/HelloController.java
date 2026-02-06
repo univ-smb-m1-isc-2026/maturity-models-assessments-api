@@ -11,10 +11,24 @@ import java.util.Map;
 @CrossOrigin(origins = "*")
 public class HelloController {
 
+    private final UserRepository userRepository;
+
+    public HelloController(UserRepository userRepository) {
+        this.userRepository = userRepository;
+    }
+
     @GetMapping("/api/hello")
-    public Map<String, String> hello() {
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "Hello World from Spring Boot API!");
+    public Map<String, Object> hello() {
+        Map<String, Object> response = new HashMap<>();
+        
+        if (userRepository.count() == 0) {
+            userRepository.save(new User("test@example.com", "TestUser"));
+            response.put("db_status", "Initialized with test user");
+        } else {
+            response.put("db_status", "Connected - Users count: " + userRepository.count());
+        }
+        
+        response.put("message", "Hello World from Spring Boot API & MongoDB!");
         return response;
     }
 }
