@@ -10,16 +10,18 @@ public class User {
     @Id
     private String id;
     private String email;
-    private String username;
+    private String firstName;
+    private String lastName;
     private String password;
     private boolean enabled;
     private Set<ERole> roles = new HashSet<>();
 
     public User() {}
 
-    public User(String email, String username, String password) {
+    public User(String email, String firstName, String lastName, String password) {
         this.email = email;
-        this.username = username;
+        this.firstName = firstName;
+        this.lastName = lastName;
         this.password = password;
         this.enabled = false;
     }
@@ -40,12 +42,20 @@ public class User {
         this.email = email;
     }
 
-    public String getUsername() {
-        return username;
+    public String getFirstName() {
+        return firstName;
     }
 
-    public void setUsername(String username) {
-        this.username = username;
+    public void setFirstName(String firstName) {
+        this.firstName = firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public void setLastName(String lastName) {
+        this.lastName = lastName;
     }
 
     public String getPassword() {

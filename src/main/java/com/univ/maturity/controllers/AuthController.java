@@ -55,7 +55,7 @@ public class AuthController {
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
+                new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
 
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
@@ -67,19 +67,14 @@ public class AuthController {
 
         return ResponseEntity.ok(new JwtResponse(jwt,
                 userDetails.getId(),
-                userDetails.getUsername(),
+                userDetails.getFirstName(),
+                userDetails.getLastName(),
                 userDetails.getEmail(),
                 roles));
     }
 
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
-        if (userRepository.existsByUsername(signUpRequest.getUsername())) {
-            return ResponseEntity
-                    .badRequest()
-                    .body(new MessageResponse("Error: Username is already taken!"));
-        }
-
         if (userRepository.existsByEmail(signUpRequest.getEmail())) {
             return ResponseEntity
                     .badRequest()
@@ -87,7 +82,8 @@ public class AuthController {
         }
 
         User user = new User(signUpRequest.getEmail(),
-                signUpRequest.getUsername(),
+                signUpRequest.getFirstName(),
+                signUpRequest.getLastName(),
                 encoder.encode(signUpRequest.getPassword()));
 
         Set<ERole> roles = new HashSet<>();
@@ -110,7 +106,10 @@ public class AuthController {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found!"));
         }
 
-        User user = userRepository.findByEmail(verifyRequest.getEmail());
+        User user = userRepository.findByEmail(verifyRequest.getEmail()).orElse(null);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found!"));
+        }
         VerificationToken verificationToken = verificationTokenRepository.findByUserId(user.getId());
 
         if (verificationToken == null) {

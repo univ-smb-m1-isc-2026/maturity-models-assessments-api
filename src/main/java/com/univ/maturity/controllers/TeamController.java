@@ -80,7 +80,7 @@ public class TeamController {
              return ResponseEntity.badRequest().body(new MessageResponse("Error: Only the team owner can invite members."));
         }
 
-        User userToInvite = userRepository.findByEmail(inviteRequest.getEmail());
+        User userToInvite = userRepository.findByEmail(inviteRequest.getEmail()).orElse(null);
         if (userToInvite == null) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User with this email not found."));
         }
