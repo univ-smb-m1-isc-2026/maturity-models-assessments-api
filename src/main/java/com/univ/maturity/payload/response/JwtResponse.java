@@ -10,14 +10,16 @@ public class JwtResponse {
   private String lastName;
   private String email;
   private List<String> roles;
+  private boolean using2FA;
 
-  public JwtResponse(String accessToken, String id, String firstName, String lastName, String email, List<String> roles) {
+  public JwtResponse(String accessToken, String id, String firstName, String lastName, String email, List<String> roles, boolean using2FA) {
     this.token = accessToken;
     this.id = id;
     this.firstName = firstName;
     this.lastName = lastName;
     this.email = email;
     this.roles = roles;
+    this.using2FA = using2FA;
   }
 
   public String getAccessToken() {
@@ -70,5 +72,13 @@ public class JwtResponse {
 
   public List<String> getRoles() {
     return roles;
+  }
+
+  public boolean isUsing2FA() {
+    return using2FA;
+  }
+
+  public void setUsing2FA(boolean using2FA) {
+    this.using2FA = using2FA;
   }
 }

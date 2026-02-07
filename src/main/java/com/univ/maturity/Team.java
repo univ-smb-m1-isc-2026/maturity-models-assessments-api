@@ -4,8 +4,9 @@ import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.DBRef;
 import org.springframework.data.mongodb.core.mapping.Document;
 
-import java.util.HashSet;
-import java.util.Set;
+import org.springframework.data.annotation.Transient;
+import java.util.ArrayList;
+import java.util.List;
 
 @Document(collection = "teams")
 public class Team {
@@ -17,15 +18,14 @@ public class Team {
     @DBRef
     private User owner;
 
-    @DBRef
-    private Set<User> members = new HashSet<>();
+    @Transient
+    private List<User> members = new ArrayList<>();
 
     public Team() {}
 
     public Team(String name, User owner) {
         this.name = name;
         this.owner = owner;
-        this.members.add(owner);
     }
 
     public String getId() {
@@ -52,11 +52,11 @@ public class Team {
         this.owner = owner;
     }
 
-    public Set<User> getMembers() {
+    public List<User> getMembers() {
         return members;
     }
 
-    public void setMembers(Set<User> members) {
+    public void setMembers(List<User> members) {
         this.members = members;
     }
 }
