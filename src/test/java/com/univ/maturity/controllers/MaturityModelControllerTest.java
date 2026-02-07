@@ -6,9 +6,11 @@ import com.univ.maturity.MaturityModelRepository;
 import com.univ.maturity.security.jwt.AuthEntryPointJwt;
 import com.univ.maturity.security.services.UserDetailsServiceImpl;
 import com.univ.maturity.security.jwt.JwtUtils;
+import com.univ.maturity.security.WebSecurityConfig;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -24,6 +26,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 
 @WebMvcTest(MaturityModelController.class)
+@Import(WebSecurityConfig.class)
 @SuppressWarnings("null")
 public class MaturityModelControllerTest {
 
