@@ -21,12 +21,7 @@ public class HelloController {
     public Map<String, Object> hello() {
         Map<String, Object> response = new HashMap<>();
         
-        if (userRepository.count() == 0) {
-            userRepository.save(new User("test@example.com", "TestUser"));
-            response.put("db_status", "Initialized with test user");
-        } else {
-            response.put("db_status", "Connected - Users count: " + userRepository.count());
-        }
+        response.put("db_status", "Connected - Users count: " + userRepository.count());
         
         response.put("message", "Hello World from Spring Boot API & MongoDB!");
         return response;
