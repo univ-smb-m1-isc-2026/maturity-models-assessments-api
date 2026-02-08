@@ -11,6 +11,7 @@ import com.univ.maturity.payload.response.MessageResponse;
 import com.univ.maturity.payload.response.TwoAFAResponse;
 import com.univ.maturity.VerificationToken;
 import com.univ.maturity.VerificationTokenRepository;
+import com.univ.maturity.TeamMemberRepository;
 import com.univ.maturity.services.EmailService;
 import com.univ.maturity.security.jwt.JwtUtils;
 import com.univ.maturity.security.services.UserDetailsImpl;
@@ -28,8 +29,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
+
+import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.HashSet;
+import com.univ.maturity.ERole;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -40,6 +45,9 @@ public class AuthController {
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    TeamMemberRepository teamMemberRepository;
 
     @Autowired
     PasswordEncoder encoder;
@@ -84,7 +92,9 @@ public class AuthController {
         SecurityContextHolder.getContext().setAuthentication(authentication);
         String jwt = jwtUtils.generateJwtToken(authentication);
 
-        List<String> roles = new ArrayList<>();
+        List<String> roles = userDetails.getAuthorities().stream()
+                .map(item -> item.getAuthority())
+                .collect(Collectors.toList());
 
         return ResponseEntity.ok(new JwtResponse(jwt,
                 userDetails.getId(),
@@ -108,7 +118,42 @@ public class AuthController {
                 signUpRequest.getLastName(),
                 encoder.encode(signUpRequest.getPassword()));
 
+        Set<String> strRoles = signUpRequest.getRoles();
+        Set<ERole> roles = new HashSet<>();
+
+        if (strRoles == null || strRoles.isEmpty()) {
+            roles.add(ERole.ROLE_TEAM_MEMBER);
+        } else {
+            strRoles.forEach(role -> {
+                switch (role) {
+                    case "pmo":
+                        roles.add(ERole.ROLE_PMO);
+                        break;
+                    case "leader":
+                        roles.add(ERole.ROLE_TEAM_LEADER);
+                        break;
+                    default:
+                        roles.add(ERole.ROLE_TEAM_MEMBER);
+                }
+            });
+        }
+
+        user.setRoles(roles);
         userRepository.save(user);
+
+        
+        if (signUpRequest.getTeamId() != null && !signUpRequest.getTeamId().isEmpty()) {
+            try {
+                com.univ.maturity.TeamMember member = new com.univ.maturity.TeamMember();
+                member.setTeamId(signUpRequest.getTeamId());
+                member.setUserId(user.getId());
+                member.setRole(ERole.ROLE_TEAM_MEMBER);
+                teamMemberRepository.save(member);
+            } catch (Exception e) {
+                
+                System.err.println("Failed to auto-join team: " + e.getMessage());
+            }
+        }
 
         VerificationToken verificationToken = new VerificationToken(user.getId());
         verificationTokenRepository.save(verificationToken);

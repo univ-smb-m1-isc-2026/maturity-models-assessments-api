@@ -2,6 +2,8 @@ package com.univ.maturity;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import java.util.HashSet;
+import java.util.Set;
 
 @Document(collection = "users")
 public class User {
@@ -14,6 +16,7 @@ public class User {
     private boolean enabled;
     private boolean using2FA;
     private String secret2FA;
+    private Set<ERole> roles = new HashSet<>();
 
     public User() {}
 
@@ -87,5 +90,13 @@ public class User {
 
     public void setSecret2FA(String secret2FA) {
         this.secret2FA = secret2FA;
+    }
+
+    public Set<ERole> getRoles() {
+        return roles;
+    }
+
+    public void setRoles(Set<ERole> roles) {
+        this.roles = roles;
     }
 }
