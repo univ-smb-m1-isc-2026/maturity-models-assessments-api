@@ -2,6 +2,9 @@ package com.univ.maturity;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,8 +14,13 @@ public class MaturityModel {
     @Id
     private String id;
 
+    @NotBlank
     private String name;
 
+    private String teamId;
+
+    @NotEmpty
+    @Valid
     private List<Question> questions = new ArrayList<>();
 
     public MaturityModel() {}
@@ -35,6 +43,14 @@ public class MaturityModel {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public String getTeamId() {
+        return teamId;
+    }
+
+    public void setTeamId(String teamId) {
+        this.teamId = teamId;
     }
 
     public List<Question> getQuestions() {

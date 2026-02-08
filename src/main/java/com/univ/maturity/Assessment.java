@@ -21,7 +21,7 @@ public class Assessment {
 
     private LocalDateTime date;
 
-    private List<Answer> answers = new ArrayList<>();
+    private List<Submission> submissions = new ArrayList<>();
 
     public Assessment() {}
 
@@ -63,11 +63,11 @@ public class Assessment {
         this.date = date;
     }
 
-    public List<Answer> getAnswers() {
-        return answers;
+    public List<Submission> getSubmissions() {
+        return submissions;
     }
 
-    public void setAnswers(List<Answer> answers) {
-        this.answers = answers;
+    public void setSubmissions(List<Submission> submissions) {
+        this.submissions = submissions;
     }
 }

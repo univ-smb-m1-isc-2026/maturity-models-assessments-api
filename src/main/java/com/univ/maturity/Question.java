@@ -2,9 +2,16 @@ package com.univ.maturity;
 
 import java.util.ArrayList;
 import java.util.List;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 
 public class Question {
+    @NotBlank
     private String text;
+
+    @Size(min = 5, max = 5)
+    @Valid
     private List<Level> levels = new ArrayList<>();
 
     public Question() {}

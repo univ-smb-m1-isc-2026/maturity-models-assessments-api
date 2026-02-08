@@ -3,10 +3,12 @@ package com.univ.maturity.controllers;
 import com.univ.maturity.MaturityModel;
 import com.univ.maturity.MaturityModelRepository;
 import com.univ.maturity.payload.response.MessageResponse;
+import com.univ.maturity.security.services.UserDetailsImpl;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -21,10 +23,19 @@ public class MaturityModelController {
     @Autowired
     MaturityModelRepository maturityModelRepository;
 
+    @Autowired
+    com.univ.maturity.TeamRepository teamRepository;
+
     @GetMapping
     @PreAuthorize("hasRole('TEAM_MEMBER') or hasRole('TEAM_LEADER') or hasRole('PMO')")
     public List<MaturityModel> getAllModels() {
         return maturityModelRepository.findAll();
+    }
+
+    @GetMapping("/team/{teamId}")
+    @PreAuthorize("hasRole('TEAM_MEMBER') or hasRole('TEAM_LEADER') or hasRole('PMO')")
+    public List<MaturityModel> getModelsByTeam(@PathVariable String teamId) {
+        return maturityModelRepository.findByTeamId(teamId);
     }
 
     @GetMapping("/{id}")
@@ -39,8 +50,29 @@ public class MaturityModelController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('PMO')")
+    @PreAuthorize("hasRole('PMO') or hasRole('TEAM_LEADER')")
     public ResponseEntity<?> createModel(@Valid @RequestBody MaturityModel maturityModel) {
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        
+        
+        boolean isPMO = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PMO"));
+        
+        if (!isPMO) {
+             
+             if (maturityModel.getTeamId() == null) {
+                 return ResponseEntity.badRequest().body(new MessageResponse("Error: Team ID is required."));
+             }
+             
+             Optional<com.univ.maturity.Team> teamOpt = teamRepository.findById(Objects.requireNonNull(maturityModel.getTeamId()));
+             if (teamOpt.isEmpty()) {
+                 return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
+             }
+             
+             if (!teamOpt.get().getOwner().getId().equals(userDetails.getId())) {
+                 return ResponseEntity.status(403).body(new MessageResponse("Error: You must be the Team Owner to create a model for this team."));
+             }
+        }
+
         if (maturityModelRepository.existsByName(maturityModel.getName())) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Model name already exists!"));
         }

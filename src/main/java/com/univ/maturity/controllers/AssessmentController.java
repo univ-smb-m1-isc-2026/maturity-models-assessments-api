@@ -13,6 +13,9 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
+import com.univ.maturity.security.services.UserDetailsImpl;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
 @RequestMapping("/api/assessments")
@@ -26,6 +29,9 @@ public class AssessmentController {
 
     @Autowired
     MaturityModelRepository maturityModelRepository;
+
+    @Autowired
+    TeamMemberRepository teamMemberRepository;
 
     @PostMapping("/start")
     @PreAuthorize("hasRole('TEAM_LEADER') or hasRole('PMO')")
@@ -67,19 +73,45 @@ public class AssessmentController {
         return ResponseEntity.ok(assessmentOpt.get());
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id}/submit")
     @PreAuthorize("hasRole('TEAM_MEMBER') or hasRole('TEAM_LEADER') or hasRole('PMO')")
-    public ResponseEntity<?> updateAssessment(@PathVariable String id, @RequestBody Assessment updatedAssessment) {
+    public ResponseEntity<?> submitAssessment(@PathVariable String id, @RequestBody List<Answer> answers) {
         Optional<Assessment> assessmentOpt = assessmentRepository.findById(Objects.requireNonNull(id));
         if (assessmentOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Assessment not found."));
         }
 
         Assessment assessment = assessmentOpt.get();
-        assessment.setAnswers(updatedAssessment.getAnswers());
-        assessment.setDate(java.time.LocalDateTime.now());
+        
+        
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        boolean isPMO = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PMO"));
+        
+        if (!isPMO) {
+            Optional<TeamMember> membership = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), assessment.getTeam().getId());
+            if (membership.isEmpty()) {
+                return ResponseEntity.status(403).body(new MessageResponse("Error: You are not a member of this team."));
+            }
+        }
+
+        List<Submission> submissions = assessment.getSubmissions();
+        Optional<Submission> existingSubmission = submissions.stream()
+            .filter(s -> s.getUserId().equals(userDetails.getId()))
+            .findFirst();
+
+        if (existingSubmission.isPresent()) {
+            existingSubmission.get().setAnswers(answers);
+            existingSubmission.get().setDate(java.time.LocalDateTime.now());
+        } else {
+            Submission newSubmission = new Submission(userDetails.getId(), answers);
+            submissions.add(newSubmission);
+        }
+
+        assessment.setSubmissions(submissions);
+        assessment.setDate(java.time.LocalDateTime.now()); 
         
         assessmentRepository.save(assessment);
+        
         return ResponseEntity.ok(assessment);
     }
 }
