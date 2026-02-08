@@ -141,7 +141,6 @@ public class AuthController {
         user.setRoles(roles);
         userRepository.save(user);
 
-        
         if (signUpRequest.getTeamId() != null && !signUpRequest.getTeamId().isEmpty()) {
             try {
                 com.univ.maturity.TeamMember member = new com.univ.maturity.TeamMember();
@@ -150,7 +149,6 @@ public class AuthController {
                 member.setRole(ERole.ROLE_TEAM_MEMBER);
                 teamMemberRepository.save(member);
             } catch (Exception e) {
-                
                 System.err.println("Failed to auto-join team: " + e.getMessage());
             }
         }

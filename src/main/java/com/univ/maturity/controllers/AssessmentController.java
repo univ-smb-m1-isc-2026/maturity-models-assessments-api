@@ -83,7 +83,6 @@ public class AssessmentController {
 
         Assessment assessment = assessmentOpt.get();
         
-        
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         boolean isPMO = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PMO"));
         

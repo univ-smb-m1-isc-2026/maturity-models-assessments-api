@@ -109,7 +109,6 @@ public class TeamController {
 
         Optional<TeamMember> requesterMemberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), team.getId());
         
-        
         boolean isPMO = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PMO"));
 
         if (!isPMO) {
@@ -125,7 +124,6 @@ public class TeamController {
 
         User userToInvite = userRepository.findByEmail(inviteRequest.getEmail()).orElse(null);
         if (userToInvite == null) {
-            
             String invitationLink = "http://localhost:5173/register?role=user&teamId=" + team.getId() + "&email=" + inviteRequest.getEmail();
             emailService.sendInvitationEmail(inviteRequest.getEmail(), team.getName(), invitationLink);
             return ResponseEntity.ok(new MessageResponse("User not found, invitation email sent!"));
@@ -151,7 +149,6 @@ public class TeamController {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
         }
         
-        
         boolean isPMO = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PMO"));
         boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
         
@@ -159,14 +156,12 @@ public class TeamController {
             return ResponseEntity.status(403).body(new MessageResponse("Error: You do not have permission to update roles."));
         }
 
-        
         Optional<User> memberUserOpt = userRepository.findById(Objects.requireNonNull(userId));
         if (memberUserOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
         }
         User memberUser = memberUserOpt.get();
 
-        
         Optional<TeamMember> memberShipOpt = teamMemberRepository.findByUserIdAndTeamId(userId, id);
         if (memberShipOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User is not a member of this team."));
@@ -193,7 +188,6 @@ public class TeamController {
         memberUser.setRoles(roles);
         userRepository.save(memberUser);
 
-        
         TeamMember memberShip = memberShipOpt.get();
         if (roles.contains(ERole.ROLE_PMO)) {
             memberShip.setRole(ERole.ROLE_PMO);

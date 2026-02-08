@@ -54,7 +54,6 @@ public class MaturityModelController {
     public ResponseEntity<?> createModel(@Valid @RequestBody MaturityModel maturityModel) {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         
-        
         boolean isPMO = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PMO"));
         
         if (!isPMO) {
