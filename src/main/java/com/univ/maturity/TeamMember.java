@@ -2,6 +2,8 @@ package com.univ.maturity;
 
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
+import java.util.HashSet;
+import java.util.Set;
 
 @Document(collection = "team_members")
 public class TeamMember {
@@ -10,14 +12,20 @@ public class TeamMember {
 
     private String userId;
     private String teamId;
-    private ERole role;
+    private Set<ERole> roles = new HashSet<>();
 
     public TeamMember() {}
+
+    public TeamMember(String userId, String teamId, Set<ERole> roles) {
+        this.userId = userId;
+        this.teamId = teamId;
+        this.roles = roles;
+    }
 
     public TeamMember(String userId, String teamId, ERole role) {
         this.userId = userId;
         this.teamId = teamId;
-        this.role = role;
+        this.roles.add(role);
     }
 
     public String getId() {
@@ -44,11 +52,11 @@ public class TeamMember {
         this.teamId = teamId;
     }
 
-    public ERole getRole() {
-        return role;
+    public Set<ERole> getRoles() {
+        return roles;
     }
 
-    public void setRole(ERole role) {
-        this.role = role;
+    public void setRoles(Set<ERole> roles) {
+        this.roles = roles;
     }
 }

@@ -1,14 +1,14 @@
 package com.univ.maturity.controllers;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -19,44 +19,45 @@ import org.springframework.security.test.context.support.TestExecutionEvent;
 import org.springframework.security.test.context.support.WithUserDetails;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import org.springframework.test.web.servlet.MockMvc;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.univ.maturity.ERole;
-import com.univ.maturity.Level;
-import com.univ.maturity.MaturityModel;
-import com.univ.maturity.MaturityModelRepository;
-import com.univ.maturity.Question;
 import com.univ.maturity.Team;
 import com.univ.maturity.TeamMember;
 import com.univ.maturity.TeamMemberRepository;
 import com.univ.maturity.TeamRepository;
 import com.univ.maturity.User;
+import com.univ.maturity.UserRepository;
+import com.univ.maturity.payload.request.InviteMemberRequest;
+import com.univ.maturity.payload.request.TeamRequest;
 import com.univ.maturity.security.WebSecurityConfig;
 import com.univ.maturity.security.jwt.AuthEntryPointJwt;
 import com.univ.maturity.security.jwt.JwtUtils;
 import com.univ.maturity.security.services.UserDetailsImpl;
 import com.univ.maturity.security.services.UserDetailsServiceImpl;
+import com.univ.maturity.services.EmailService;
 
-@WebMvcTest(MaturityModelController.class)
+@WebMvcTest(TeamController.class)
 @Import(WebSecurityConfig.class)
 @SuppressWarnings("null")
-public class MaturityModelControllerTest {
+public class TeamControllerTest {
 
     @Autowired
     private MockMvc mockMvc;
 
     @MockBean
-    private MaturityModelRepository maturityModelRepository;
-
-    @MockBean
     private TeamRepository teamRepository;
 
     @MockBean
+    private UserRepository userRepository;
+
+    @MockBean
     private TeamMemberRepository teamMemberRepository;
+
+    @MockBean
+    private EmailService emailService;
 
     @MockBean
     private UserDetailsServiceImpl userDetailsService;
@@ -80,83 +81,71 @@ public class MaturityModelControllerTest {
 
     @Test
     @WithUserDetails(value = "user", setupBefore = TestExecutionEvent.TEST_EXECUTION)
-    public void getAllModels_ShouldReturnList_WhenAuthorized() throws Exception {
-        MaturityModel model1 = new MaturityModel();
-        model1.setId("1");
-        model1.setName("DevOps");
-        
-        when(maturityModelRepository.findAll()).thenReturn(Arrays.asList(model1));
+    public void createTeam_ShouldReturnOk_WhenAuthenticated() throws Exception {
+        TeamRequest request = new TeamRequest();
+        request.setName("New Team");
 
-        mockMvc.perform(get("/api/models"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("DevOps"));
-    }
+        User user = new User();
+        user.setId("userId");
 
-    @Test
-    @WithUserDetails(value = "user", setupBefore = TestExecutionEvent.TEST_EXECUTION)
-    public void createModel_ShouldReturnOk_WhenUserIsPMO() throws Exception {
-        String teamId = "team1";
-        MaturityModel model = new MaturityModel();
-        model.setName("New Model");
-        model.setTeamId(teamId);
-        
-        List<Level> levels = new ArrayList<>();
-        for (int i = 1; i <= 5; i++) {
-            levels.add(new Level(i, "Level " + i));
-        }
-        Question question = new Question("Question 1", levels);
-        model.setQuestions(Collections.singletonList(question));
+        when(userRepository.findById("userId")).thenReturn(Optional.of(user));
+        when(teamRepository.existsByName("New Team")).thenReturn(false);
+        when(teamRepository.save(any(Team.class))).thenReturn(new Team("New Team", user));
+        when(teamMemberRepository.save(any(TeamMember.class))).thenReturn(new TeamMember());
 
-        Team team = new Team();
-        team.setId(teamId);
-        User owner = new User();
-        owner.setId("ownerId");
-        team.setOwner(owner);
-
-        TeamMember member = new TeamMember("userId", teamId, ERole.ROLE_PMO);
-
-        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
-        when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
-        when(maturityModelRepository.existsByName("New Model")).thenReturn(false);
-        when(maturityModelRepository.save(any(MaturityModel.class))).thenReturn(model);
-
-        mockMvc.perform(post("/api/models")
+        mockMvc.perform(post("/api/teams")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(model)))
+                .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk());
     }
 
     @Test
     @WithUserDetails(value = "user", setupBefore = TestExecutionEvent.TEST_EXECUTION)
-    public void createModel_ShouldReturnForbidden_WhenUserIsNotPMO() throws Exception {
+    public void inviteMember_ShouldReturnOk_WhenUserIsLeader() throws Exception {
         String teamId = "team1";
-        MaturityModel model = new MaturityModel();
-        model.setName("New Model");
-        model.setTeamId(teamId);
-
-        List<Level> levels = new ArrayList<>();
-        for (int i = 1; i <= 5; i++) {
-            levels.add(new Level(i, "Level " + i));
-        }
-        Question question = new Question("Question 1", levels);
-        model.setQuestions(Collections.singletonList(question));
+        InviteMemberRequest request = new InviteMemberRequest();
+        request.setEmail("invitee@test.com");
 
         Team team = new Team();
         team.setId(teamId);
-        User owner = new User();
-        owner.setId("ownerId");
-        team.setOwner(owner);
+        team.setName("Test Team");
+        
+        TeamMember member = new TeamMember("userId", teamId, ERole.ROLE_TEAM_LEADER);
 
+        when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
+        when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
+        when(userRepository.findByEmail("invitee@test.com")).thenReturn(Optional.empty());
+        doNothing().when(emailService).sendInvitationEmail(anyString(), anyString(), anyString());
+
+        mockMvc.perform(post("/api/teams/" + teamId + "/invite")
+                .with(csrf())
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+        
+        verify(emailService).sendInvitationEmail(anyString(), anyString(), anyString());
+    }
+
+    @Test
+    @WithUserDetails(value = "user", setupBefore = TestExecutionEvent.TEST_EXECUTION)
+    public void inviteMember_ShouldReturnForbidden_WhenUserIsMember() throws Exception {
+        String teamId = "team1";
+        InviteMemberRequest request = new InviteMemberRequest();
+        request.setEmail("invitee@test.com");
+
+        Team team = new Team();
+        team.setId(teamId);
+        
         TeamMember member = new TeamMember("userId", teamId, ERole.ROLE_TEAM_MEMBER);
 
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
 
-        mockMvc.perform(post("/api/models")
+        mockMvc.perform(post("/api/teams/" + teamId + "/invite")
                 .with(csrf())
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(model)))
-                .andExpect(status().isForbidden());
+                .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest());
     }
 }

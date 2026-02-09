@@ -1,20 +1,37 @@
 package com.univ.maturity.controllers;
 
-import com.univ.maturity.*;
-import com.univ.maturity.payload.request.StartAssessmentRequest;
-import com.univ.maturity.payload.response.MessageResponse;
-import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-import com.univ.maturity.security.services.UserDetailsImpl;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.univ.maturity.Answer;
+import com.univ.maturity.Assessment;
+import com.univ.maturity.AssessmentRepository;
+import com.univ.maturity.ERole;
+import com.univ.maturity.MaturityModel;
+import com.univ.maturity.MaturityModelRepository;
+import com.univ.maturity.Submission;
+import com.univ.maturity.Team;
+import com.univ.maturity.TeamMember;
+import com.univ.maturity.TeamMemberRepository;
+import com.univ.maturity.TeamRepository;
+import com.univ.maturity.payload.request.StartAssessmentRequest;
+import com.univ.maturity.payload.response.MessageResponse;
+import com.univ.maturity.security.services.UserDetailsImpl;
+
+import jakarta.validation.Valid;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -34,11 +51,19 @@ public class AssessmentController {
     TeamMemberRepository teamMemberRepository;
 
     @PostMapping("/start")
-    @PreAuthorize("hasRole('TEAM_LEADER') or hasRole('PMO')")
     public ResponseEntity<?> startAssessment(@Valid @RequestBody StartAssessmentRequest request) {
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(request.getTeamId()));
         if (teamOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
+        }
+        
+        Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), request.getTeamId());
+        boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
+        boolean isPMOorLeader = memberOpt.isPresent() && (memberOpt.get().getRoles().contains(ERole.ROLE_PMO) || memberOpt.get().getRoles().contains(ERole.ROLE_TEAM_LEADER));
+        
+        if (!isOwner && !isPMOorLeader) {
+             return ResponseEntity.status(403).body(new MessageResponse("Error: You must be the Team Owner, PMO or Leader to start an assessment."));
         }
 
         Optional<MaturityModel> modelOpt = maturityModelRepository.findById(Objects.requireNonNull(request.getMaturityModelId()));
@@ -52,11 +77,18 @@ public class AssessmentController {
     }
 
     @GetMapping("/team/{teamId}")
-    @PreAuthorize("hasRole('TEAM_MEMBER') or hasRole('TEAM_LEADER') or hasRole('PMO')")
     public ResponseEntity<?> getTeamAssessments(@PathVariable String teamId) {
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(teamId));
         if (teamOpt.isEmpty()) {
              return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
+        }
+        
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), teamId);
+        boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
+        
+        if (memberOpt.isEmpty() && !isOwner) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: You are not a member of this team."));
         }
         
         List<Assessment> assessments = assessmentRepository.findByTeam(teamOpt.get());
@@ -64,17 +96,27 @@ public class AssessmentController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasRole('TEAM_MEMBER') or hasRole('TEAM_LEADER') or hasRole('PMO')")
     public ResponseEntity<?> getAssessment(@PathVariable String id) {
         Optional<Assessment> assessmentOpt = assessmentRepository.findById(Objects.requireNonNull(id));
         if (assessmentOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Assessment not found."));
         }
+        Assessment assessment = assessmentOpt.get();
+        
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        String teamId = Objects.requireNonNull(assessment.getTeam().getId());
+        Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), teamId);
+        Optional<Team> teamOpt = teamRepository.findById(teamId);
+        boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
+
+        if (memberOpt.isEmpty() && !isOwner) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: You are not a member of the team associated with this assessment."));
+        }
+        
         return ResponseEntity.ok(assessmentOpt.get());
     }
 
     @PutMapping("/{id}/submit")
-    @PreAuthorize("hasRole('TEAM_MEMBER') or hasRole('TEAM_LEADER') or hasRole('PMO')")
     public ResponseEntity<?> submitAssessment(@PathVariable String id, @RequestBody List<Answer> answers) {
         Optional<Assessment> assessmentOpt = assessmentRepository.findById(Objects.requireNonNull(id));
         if (assessmentOpt.isEmpty()) {
@@ -83,15 +125,14 @@ public class AssessmentController {
 
         Assessment assessment = assessmentOpt.get();
         
-        
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        boolean isPMO = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PMO"));
-        
-        if (!isPMO) {
-            Optional<TeamMember> membership = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), assessment.getTeam().getId());
-            if (membership.isEmpty()) {
-                return ResponseEntity.status(403).body(new MessageResponse("Error: You are not a member of this team."));
-            }
+        String teamId = Objects.requireNonNull(assessment.getTeam().getId());
+        Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), teamId);
+        Optional<Team> teamOpt = teamRepository.findById(teamId);
+        boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
+
+        if (memberOpt.isEmpty() && !isOwner) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: You are not a member of this team."));
         }
 
         List<Submission> submissions = assessment.getSubmissions();
