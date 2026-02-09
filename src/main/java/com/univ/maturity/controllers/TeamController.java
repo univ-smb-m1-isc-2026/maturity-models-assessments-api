@@ -1,5 +1,24 @@
 package com.univ.maturity.controllers;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
 import com.univ.maturity.ERole;
 import com.univ.maturity.Team;
 import com.univ.maturity.TeamMember;
@@ -9,22 +28,11 @@ import com.univ.maturity.User;
 import com.univ.maturity.UserRepository;
 import com.univ.maturity.payload.request.InviteMemberRequest;
 import com.univ.maturity.payload.request.TeamRequest;
+import com.univ.maturity.payload.request.UpdateUserRolesRequest;
 import com.univ.maturity.payload.response.MessageResponse;
 import com.univ.maturity.security.services.UserDetailsImpl;
+
 import jakarta.validation.Valid;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.stream.Collectors;
-
-import com.univ.maturity.payload.request.UpdateUserRolesRequest;
-import java.util.HashSet;
-import java.util.Set;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -68,6 +76,14 @@ public class TeamController {
                     .filter(Objects::nonNull)
                     .collect(Collectors.toList());
             List<User> members = userRepository.findAllById(memberIds);
+            
+            for (User member : members) {
+                teamMembers.stream()
+                    .filter(tm -> tm.getUserId().equals(member.getId()))
+                    .findFirst()
+                    .ifPresent(tm -> member.setRoles(tm.getRoles()));
+            }
+
             team.setMembers(members);
         }
 
@@ -90,7 +106,12 @@ public class TeamController {
         Team team = new Team(teamRequest.getName(), user);
         teamRepository.save(team);
 
-        TeamMember teamMember = new TeamMember(user.getId(), team.getId(), ERole.ROLE_PMO);
+        Set<ERole> roles = new HashSet<>();
+        roles.add(ERole.ROLE_PMO);
+        roles.add(ERole.ROLE_TEAM_LEADER);
+        roles.add(ERole.ROLE_TEAM_MEMBER);
+        
+        TeamMember teamMember = new TeamMember(user.getId(), team.getId(), roles);
         teamMemberRepository.save(teamMember);
 
         return ResponseEntity.ok(new MessageResponse("Team created successfully!"));
@@ -109,22 +130,18 @@ public class TeamController {
 
         Optional<TeamMember> requesterMemberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), team.getId());
         
-        boolean isPMO = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PMO"));
+        if (requesterMemberOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(new MessageResponse("Error: You are not a member of this team."));
+        }
 
-        if (!isPMO) {
-            if (requesterMemberOpt.isEmpty()) {
-                 return ResponseEntity.badRequest().body(new MessageResponse("Error: You are not a member of this team."));
-            }
-    
-            TeamMember requesterMember = requesterMemberOpt.get();
-            if (requesterMember.getRole() != ERole.ROLE_TEAM_LEADER && requesterMember.getRole() != ERole.ROLE_PMO) {
-                 return ResponseEntity.badRequest().body(new MessageResponse("Error: Only the team leader can invite members."));
-            }
+        TeamMember requesterMember = requesterMemberOpt.get();
+        if (!requesterMember.getRoles().contains(ERole.ROLE_TEAM_LEADER) && !requesterMember.getRoles().contains(ERole.ROLE_PMO)) {
+                return ResponseEntity.badRequest().body(new MessageResponse("Error: Only the team leader or PMO can invite members."));
         }
 
         User userToInvite = userRepository.findByEmail(inviteRequest.getEmail()).orElse(null);
         if (userToInvite == null) {
-            String invitationLink = "http://localhost:5173/register?role=user&teamId=" + team.getId() + "&email=" + inviteRequest.getEmail();
+            String invitationLink = "http://localhost:5173/register?teamId=" + team.getId() + "&email=" + inviteRequest.getEmail();
             emailService.sendInvitationEmail(inviteRequest.getEmail(), team.getName(), invitationLink);
             return ResponseEntity.ok(new MessageResponse("User not found, invitation email sent!"));
         }
@@ -136,6 +153,9 @@ public class TeamController {
 
         TeamMember newMember = new TeamMember(userToInvite.getId(), team.getId(), ERole.ROLE_TEAM_MEMBER);
         teamMemberRepository.save(newMember);
+
+        String invitationLink = "http://localhost:5173/teams/" + team.getId();
+        emailService.sendInvitationEmail(inviteRequest.getEmail(), team.getName(), invitationLink);
 
         return ResponseEntity.ok(new MessageResponse("User added to team successfully!"));
     }
@@ -149,9 +169,11 @@ public class TeamController {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
         }
         
-        boolean isPMO = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_PMO"));
         boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
         
+        Optional<TeamMember> requesterMemberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), id);
+        boolean isPMO = requesterMemberOpt.isPresent() && requesterMemberOpt.get().getRoles().contains(ERole.ROLE_PMO);
+
         if (!isPMO && !isOwner) {
             return ResponseEntity.status(403).body(new MessageResponse("Error: You do not have permission to update roles."));
         }
@@ -160,8 +182,7 @@ public class TeamController {
         if (memberUserOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
         }
-        User memberUser = memberUserOpt.get();
-
+        
         Optional<TeamMember> memberShipOpt = teamMemberRepository.findByUserIdAndTeamId(userId, id);
         if (memberShipOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User is not a member of this team."));
@@ -173,29 +194,15 @@ public class TeamController {
         if (strRoles != null) {
             strRoles.forEach(role -> {
                 switch (role) {
-                    case "pmo":
-                        roles.add(ERole.ROLE_PMO);
-                        break;
-                    case "leader":
-                        roles.add(ERole.ROLE_TEAM_LEADER);
-                        break;
-                    default:
-                        roles.add(ERole.ROLE_TEAM_MEMBER);
+                    case "pmo" -> roles.add(ERole.ROLE_PMO);
+                    case "leader" -> roles.add(ERole.ROLE_TEAM_LEADER);
+                    default -> roles.add(ERole.ROLE_TEAM_MEMBER);
                 }
             });
         }
 
-        memberUser.setRoles(roles);
-        userRepository.save(memberUser);
-
         TeamMember memberShip = memberShipOpt.get();
-        if (roles.contains(ERole.ROLE_PMO)) {
-            memberShip.setRole(ERole.ROLE_PMO);
-        } else if (roles.contains(ERole.ROLE_TEAM_LEADER)) {
-            memberShip.setRole(ERole.ROLE_TEAM_LEADER);
-        } else {
-            memberShip.setRole(ERole.ROLE_TEAM_MEMBER);
-        }
+        memberShip.setRoles(roles);
         teamMemberRepository.save(memberShip);
 
         return ResponseEntity.ok(new MessageResponse("User roles updated successfully!"));

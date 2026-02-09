@@ -1,24 +1,9 @@
 package com.univ.maturity.controllers;
 
-import com.univ.maturity.User;
-import com.univ.maturity.UserRepository;
-import com.univ.maturity.payload.request.VerifyRequest;
-import com.univ.maturity.payload.request.Enable2FARequest;
-import com.univ.maturity.payload.request.LoginRequest;
-import com.univ.maturity.payload.request.SignupRequest;
-import com.univ.maturity.payload.response.JwtResponse;
-import com.univ.maturity.payload.response.MessageResponse;
-import com.univ.maturity.payload.response.TwoAFAResponse;
-import com.univ.maturity.VerificationToken;
-import com.univ.maturity.VerificationTokenRepository;
-import com.univ.maturity.TeamMemberRepository;
-import com.univ.maturity.services.EmailService;
-import com.univ.maturity.security.jwt.JwtUtils;
-import com.univ.maturity.security.services.UserDetailsImpl;
-import com.warrenstrange.googleauth.GoogleAuthenticator;
-import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
-import com.warrenstrange.googleauth.GoogleAuthenticatorQRGenerator;
-import jakarta.validation.Valid;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -26,15 +11,32 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
-import java.util.List;
+import com.univ.maturity.TeamMemberRepository;
+import com.univ.maturity.User;
+import com.univ.maturity.UserRepository;
+import com.univ.maturity.VerificationToken;
+import com.univ.maturity.VerificationTokenRepository;
+import com.univ.maturity.payload.request.Enable2FARequest;
+import com.univ.maturity.payload.request.LoginRequest;
+import com.univ.maturity.payload.request.SignupRequest;
+import com.univ.maturity.payload.request.VerifyRequest;
+import com.univ.maturity.payload.response.JwtResponse;
+import com.univ.maturity.payload.response.MessageResponse;
+import com.univ.maturity.payload.response.TwoAFAResponse;
+import com.univ.maturity.security.jwt.JwtUtils;
+import com.univ.maturity.security.services.UserDetailsImpl;
+import com.univ.maturity.services.EmailService;
+import com.warrenstrange.googleauth.GoogleAuthenticator;
+import com.warrenstrange.googleauth.GoogleAuthenticatorKey;
+import com.warrenstrange.googleauth.GoogleAuthenticatorQRGenerator;
 
-import java.util.stream.Collectors;
-import java.util.Set;
-import java.util.HashSet;
-import com.univ.maturity.ERole;
+import jakarta.validation.Valid;
 
 @CrossOrigin(origins = "*", maxAge = 3600)
 @RestController
@@ -118,35 +120,11 @@ public class AuthController {
                 signUpRequest.getLastName(),
                 encoder.encode(signUpRequest.getPassword()));
 
-        Set<String> strRoles = signUpRequest.getRoles();
-        Set<ERole> roles = new HashSet<>();
-
-        if (strRoles == null || strRoles.isEmpty()) {
-            roles.add(ERole.ROLE_TEAM_MEMBER);
-        } else {
-            strRoles.forEach(role -> {
-                switch (role) {
-                    case "pmo":
-                        roles.add(ERole.ROLE_PMO);
-                        break;
-                    case "leader":
-                        roles.add(ERole.ROLE_TEAM_LEADER);
-                        break;
-                    default:
-                        roles.add(ERole.ROLE_TEAM_MEMBER);
-                }
-            });
-        }
-
-        user.setRoles(roles);
         userRepository.save(user);
 
         if (signUpRequest.getTeamId() != null && !signUpRequest.getTeamId().isEmpty()) {
             try {
-                com.univ.maturity.TeamMember member = new com.univ.maturity.TeamMember();
-                member.setTeamId(signUpRequest.getTeamId());
-                member.setUserId(user.getId());
-                member.setRole(ERole.ROLE_TEAM_MEMBER);
+                com.univ.maturity.TeamMember member = new com.univ.maturity.TeamMember(user.getId(), signUpRequest.getTeamId(), com.univ.maturity.ERole.ROLE_TEAM_MEMBER);
                 teamMemberRepository.save(member);
             } catch (Exception e) {
                 System.err.println("Failed to auto-join team: " + e.getMessage());

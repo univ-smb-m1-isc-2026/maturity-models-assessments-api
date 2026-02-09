@@ -1,30 +1,28 @@
 package com.univ.maturity.security.services;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
-import com.univ.maturity.User;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import java.util.stream.Collectors;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.univ.maturity.User;
 
 public class UserDetailsImpl implements UserDetails {
     private static final long serialVersionUID = 1L;
 
-    private String id;
-    private String firstName;
-    private String lastName;
-    private String email;
-    private boolean enabled;
+    private final String id;
+    private final String firstName;
+    private final String lastName;
+    private final String email;
+    private final boolean enabled;
 
     @JsonIgnore
-    private String password;
+    private final String password;
 
-    private Collection<? extends GrantedAuthority> authorities;
+    private final Collection<? extends GrantedAuthority> authorities;
 
     public UserDetailsImpl(String id, String firstName, String lastName, String email, String password, boolean enabled,
                            Collection<? extends GrantedAuthority> authorities) {
@@ -38,9 +36,7 @@ public class UserDetailsImpl implements UserDetails {
     }
 
     public static UserDetailsImpl build(User user) {
-        List<GrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.name()))
-                .collect(Collectors.toList());
+        List<GrantedAuthority> authorities = java.util.Collections.emptyList();
 
         return new UserDetailsImpl(
                 user.getId(),
@@ -111,5 +107,10 @@ public class UserDetailsImpl implements UserDetails {
             return false;
         UserDetailsImpl user = (UserDetailsImpl) o;
         return Objects.equals(id, user.id);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
     }
 }
