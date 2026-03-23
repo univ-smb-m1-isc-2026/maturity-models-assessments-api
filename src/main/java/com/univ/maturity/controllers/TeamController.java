@@ -142,8 +142,15 @@ public class TeamController {
         User userToInvite = userRepository.findByEmail(inviteRequest.getEmail()).orElse(null);
         if (userToInvite == null) {
             String invitationLink = "http://localhost:5173/register?teamId=" + team.getId() + "&email=" + inviteRequest.getEmail();
-            emailService.sendInvitationEmail(inviteRequest.getEmail(), team.getName(), invitationLink);
-            return ResponseEntity.ok(new MessageResponse("User not found, invitation email sent!"));
+            try {
+                boolean sent = emailService.sendInvitationEmail(inviteRequest.getEmail(), team.getName(), invitationLink);
+                if (sent) {
+                    return ResponseEntity.ok(new MessageResponse("User not found, invitation email sent!"));
+                }
+                return ResponseEntity.ok(new MessageResponse("User not found, invitation generated (email sending disabled)."));
+            } catch (Exception e) {
+                return ResponseEntity.internalServerError().body(new MessageResponse("Error: Unable to send invitation email. Please try again later."));
+            }
         }
         
         Optional<TeamMember> existingMember = teamMemberRepository.findByUserIdAndTeamId(userToInvite.getId(), team.getId());
@@ -155,7 +162,12 @@ public class TeamController {
         teamMemberRepository.save(newMember);
 
         String invitationLink = "http://localhost:5173/teams/" + team.getId();
-        emailService.sendInvitationEmail(inviteRequest.getEmail(), team.getName(), invitationLink);
+        try {
+            emailService.sendInvitationEmail(inviteRequest.getEmail(), team.getName(), invitationLink);
+        } catch (Exception e) {
+            teamMemberRepository.delete(newMember);
+            return ResponseEntity.internalServerError().body(new MessageResponse("Error: Unable to send invitation email. Please try again later."));
+        }
 
         return ResponseEntity.ok(new MessageResponse("User added to team successfully!"));
     }

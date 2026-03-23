@@ -25,6 +25,7 @@ public class EmailServiceTest {
     @Test
     public void sendVerificationEmail_ShouldSendEmail() {
         ReflectionTestUtils.setField(emailService, "fromEmail", "test@example.com");
+        ReflectionTestUtils.setField(emailService, "mailEnabled", true);
 
         String toEmail = "user@example.com";
         String code = "123456";

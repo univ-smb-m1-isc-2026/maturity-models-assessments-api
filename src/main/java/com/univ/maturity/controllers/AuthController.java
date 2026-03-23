@@ -134,9 +134,17 @@ public class AuthController {
         VerificationToken verificationToken = new VerificationToken(user.getId());
         verificationTokenRepository.save(verificationToken);
 
-        emailService.sendVerificationEmail(user.getEmail(), verificationToken.getToken());
-
-        return ResponseEntity.ok(new MessageResponse("User registered successfully! Please check your email for the verification code."));
+        try {
+            boolean sent = emailService.sendVerificationEmail(user.getEmail(), verificationToken.getToken());
+            if (sent) {
+                return ResponseEntity.ok(new MessageResponse("User registered successfully! Please check your email for the verification code."));
+            }
+            return ResponseEntity.ok(new MessageResponse("User registered successfully! Email sending is disabled; check server logs for the verification code."));
+        } catch (Exception e) {
+            verificationTokenRepository.delete(verificationToken);
+            userRepository.delete(user);
+            return ResponseEntity.internalServerError().body(new MessageResponse("Error: Unable to send verification email. Please try again later."));
+        }
     }
 
     @PostMapping("/2fa/generate")

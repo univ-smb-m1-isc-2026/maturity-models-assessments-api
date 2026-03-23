@@ -1,13 +1,13 @@
 package com.univ.maturity.controllers;
 
 import java.util.Collections;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -63,11 +63,9 @@ public class TeamControllerTest {
     private UserDetailsServiceImpl userDetailsService;
 
     @MockBean
-    @SuppressWarnings("unused")
     private AuthEntryPointJwt authEntryPointJwt;
 
     @MockBean
-    @SuppressWarnings("unused")
     private JwtUtils jwtUtils;
 
     @Autowired
@@ -77,6 +75,8 @@ public class TeamControllerTest {
     public void setup() {
         UserDetailsImpl userDetails = new UserDetailsImpl("userId", "First", "Last", "user", "password", true, Collections.emptyList());
         when(userDetailsService.loadUserByUsername("user")).thenReturn(userDetails);
+        Objects.requireNonNull(authEntryPointJwt);
+        Objects.requireNonNull(jwtUtils);
     }
 
     @Test
@@ -116,7 +116,7 @@ public class TeamControllerTest {
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
         when(userRepository.findByEmail("invitee@test.com")).thenReturn(Optional.empty());
-        doNothing().when(emailService).sendInvitationEmail(anyString(), anyString(), anyString());
+        when(emailService.sendInvitationEmail(anyString(), anyString(), anyString())).thenReturn(true);
 
         mockMvc.perform(post("/api/teams/" + teamId + "/invite")
                 .with(csrf())

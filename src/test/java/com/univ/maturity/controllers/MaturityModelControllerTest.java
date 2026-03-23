@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -62,11 +63,9 @@ public class MaturityModelControllerTest {
     private UserDetailsServiceImpl userDetailsService;
 
     @MockBean
-    @SuppressWarnings("unused")
     private AuthEntryPointJwt authEntryPointJwt;
 
     @MockBean
-    @SuppressWarnings("unused")
     private JwtUtils jwtUtils;
 
     @Autowired
@@ -76,6 +75,8 @@ public class MaturityModelControllerTest {
     public void setup() {
         UserDetailsImpl userDetails = new UserDetailsImpl("userId", "First", "Last", "user", "password", true, Collections.emptyList());
         when(userDetailsService.loadUserByUsername("user")).thenReturn(userDetails);
+        Objects.requireNonNull(authEntryPointJwt);
+        Objects.requireNonNull(jwtUtils);
     }
 
     @Test
