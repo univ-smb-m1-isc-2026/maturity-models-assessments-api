@@ -98,10 +98,10 @@ public class MaturityModelController {
         boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
         
         Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), maturityModel.getTeamId());
-        boolean isPMOorLeader = memberOpt.isPresent() && (memberOpt.get().getRoles().contains(ERole.ROLE_PMO) || memberOpt.get().getRoles().contains(ERole.ROLE_TEAM_LEADER));
+        boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
         
-        if (!isOwner && !isPMOorLeader) {
-             return ResponseEntity.status(403).body(new MessageResponse("Error: You must be the Team Owner, PMO or Leader to create a model for this team."));
+        if (!isOwner && !isPMO) {
+             return ResponseEntity.status(403).body(new MessageResponse("Error: You must be the Team Owner or PMO to create a model for this team."));
         }
 
         if (maturityModelRepository.existsByName(maturityModel.getName())) {
