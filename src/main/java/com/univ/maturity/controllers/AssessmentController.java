@@ -58,7 +58,7 @@ public class AssessmentController {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
         }
         
-        Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), request.getTeamId());
+        Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), request.getTeamId());
         boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
         boolean isPMOorLeader = memberOpt.isPresent() && (memberOpt.get().getRoles().contains(ERole.ROLE_PMO) || memberOpt.get().getRoles().contains(ERole.ROLE_TEAM_LEADER));
         
@@ -84,7 +84,7 @@ public class AssessmentController {
         }
         
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), teamId);
+        Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), teamId);
         boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
         
         if (memberOpt.isEmpty() && !isOwner) {
@@ -105,7 +105,7 @@ public class AssessmentController {
         
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String teamId = Objects.requireNonNull(assessment.getTeam().getId());
-        Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), teamId);
+        Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), teamId);
         Optional<Team> teamOpt = teamRepository.findById(teamId);
         boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
 
@@ -127,7 +127,7 @@ public class AssessmentController {
         
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         String teamId = Objects.requireNonNull(assessment.getTeam().getId());
-        Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), teamId);
+        Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), teamId);
         Optional<Team> teamOpt = teamRepository.findById(teamId);
         boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
 

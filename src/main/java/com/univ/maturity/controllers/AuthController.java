@@ -2,6 +2,7 @@ package com.univ.maturity.controllers;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,8 +17,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
+import com.univ.maturity.InvitationRepository;
+import com.univ.maturity.InvitationStatus;
 import com.univ.maturity.TeamMemberRepository;
+import com.univ.maturity.TeamRepository;
 import com.univ.maturity.User;
 import com.univ.maturity.UserRepository;
 import com.univ.maturity.VerificationToken;
@@ -50,12 +55,18 @@ public class AuthController {
 
     @Autowired
     TeamMemberRepository teamMemberRepository;
+    
+    @Autowired
+    InvitationRepository invitationRepository;
 
     @Autowired
     PasswordEncoder encoder;
 
     @Autowired
     JwtUtils jwtUtils;
+
+    @Autowired
+    TeamRepository teamRepository;
 
     @Autowired
     VerificationTokenRepository verificationTokenRepository;
@@ -68,6 +79,11 @@ public class AuthController {
     @PostMapping("/signin")
     @SuppressWarnings("null")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
+
+        User existingUser = userRepository.findByEmail(loginRequest.getEmail()).orElse(null);
+        if (existingUser != null && !existingUser.isEnabled()) {
+            return ResponseEntity.status(403).body(new MessageResponse("EMAIL_NOT_VERIFIED"));
+        }
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
@@ -124,8 +140,25 @@ public class AuthController {
 
         if (signUpRequest.getTeamId() != null && !signUpRequest.getTeamId().isEmpty()) {
             try {
-                com.univ.maturity.TeamMember member = new com.univ.maturity.TeamMember(user.getId(), signUpRequest.getTeamId(), com.univ.maturity.ERole.ROLE_TEAM_MEMBER);
-                teamMemberRepository.save(member);
+                String teamId = Objects.requireNonNull(signUpRequest.getTeamId());
+                com.univ.maturity.Team team = teamRepository.findById(teamId).orElse(null);
+                if (team != null) {
+                    com.univ.maturity.TeamMember member = new com.univ.maturity.TeamMember(user, team, com.univ.maturity.ERole.ROLE_TEAM_MEMBER);
+                    teamMemberRepository.save(member);
+                }
+                
+                invitationRepository.findByInviteeEmailAndTeamIdAndStatus(user.getEmail(), teamId, InvitationStatus.PENDING)
+                    .ifPresent(inv -> {
+                        if (inv.getExpiresAt() != null && inv.getExpiresAt().isBefore(java.time.Instant.now())) {
+                            inv.setStatus(InvitationStatus.EXPIRED);
+                            invitationRepository.save(inv);
+                            return;
+                        }
+                        inv.setStatus(InvitationStatus.ACCEPTED);
+                        inv.setAcceptedAt(java.time.Instant.now());
+                        inv.setToken(java.util.UUID.randomUUID().toString());
+                        invitationRepository.save(inv);
+                    });
             } catch (Exception e) {
                 System.err.println("Failed to auto-join team: " + e.getMessage());
             }
@@ -231,5 +264,35 @@ public class AuthController {
         verificationTokenRepository.delete(verificationToken);
 
         return ResponseEntity.ok(new MessageResponse("User verified successfully!"));
+    }
+    
+    @PostMapping("/verify/resend")
+    public ResponseEntity<?> resendVerification(@RequestParam String email) {
+        User user = userRepository.findByEmail(email).orElse(null);
+        if (user == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found!"));
+        }
+        if (user.isEnabled()) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: User already verified!"));
+        }
+        
+        VerificationToken existing = verificationTokenRepository.findByUserId(user.getId());
+        if (existing != null) {
+            verificationTokenRepository.delete(existing);
+        }
+        
+        VerificationToken verificationToken = new VerificationToken(user.getId());
+        verificationTokenRepository.save(verificationToken);
+        
+        try {
+            boolean sent = emailService.sendVerificationEmail(user.getEmail(), verificationToken.getToken());
+            if (sent) {
+                return ResponseEntity.ok(new MessageResponse("Verification email sent! Please check your inbox."));
+            }
+            return ResponseEntity.ok(new MessageResponse("Verification code generated (email sending disabled)."));
+        } catch (Exception e) {
+            verificationTokenRepository.delete(verificationToken);
+            return ResponseEntity.internalServerError().body(new MessageResponse("Error: Unable to send verification email. Please try again later."));
+        }
     }
 }

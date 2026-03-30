@@ -100,11 +100,13 @@ public class AssessmentControllerTest {
         MaturityModel model = new MaturityModel();
         model.setId(modelId);
 
-        TeamMember member = new TeamMember("userId", teamId, ERole.ROLE_TEAM_LEADER);
+        User user = new User();
+        user.setId("userId");
+        TeamMember member = new TeamMember(user, team, ERole.ROLE_TEAM_LEADER);
 
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
         when(maturityModelRepository.findById(modelId)).thenReturn(Optional.of(model));
-        when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
+        when(teamMemberRepository.findByUser_IdAndTeam_Id("userId", teamId)).thenReturn(Optional.of(member));
         when(assessmentRepository.save(any(Assessment.class))).thenReturn(new Assessment(team, model));
 
         mockMvc.perform(post("/api/assessments/start")
@@ -129,10 +131,12 @@ public class AssessmentControllerTest {
         owner.setId("ownerId");
         team.setOwner(owner);
 
-        TeamMember member = new TeamMember("userId", teamId, ERole.ROLE_TEAM_MEMBER);
+        User user = new User();
+        user.setId("userId");
+        TeamMember member = new TeamMember(user, team, ERole.ROLE_TEAM_MEMBER);
 
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
-        when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
+        when(teamMemberRepository.findByUser_IdAndTeam_Id("userId", teamId)).thenReturn(Optional.of(member));
 
         mockMvc.perform(post("/api/assessments/start")
                 .with(csrf())
@@ -157,13 +161,15 @@ public class AssessmentControllerTest {
         assessment.setId(assessmentId);
         assessment.setTeam(team);
         
-        TeamMember member = new TeamMember("userId", teamId, ERole.ROLE_TEAM_MEMBER);
+        User user = new User();
+        user.setId("userId");
+        TeamMember member = new TeamMember(user, team, ERole.ROLE_TEAM_MEMBER);
         
         List<Answer> answers = Collections.emptyList();
 
         when(assessmentRepository.findById(assessmentId)).thenReturn(Optional.of(assessment));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
-        when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
+        when(teamMemberRepository.findByUser_IdAndTeam_Id("userId", teamId)).thenReturn(Optional.of(member));
         when(assessmentRepository.save(any(Assessment.class))).thenReturn(assessment);
 
         mockMvc.perform(put("/api/assessments/" + assessmentId + "/submit")
@@ -189,11 +195,13 @@ public class AssessmentControllerTest {
         assessment.setId(assessmentId);
         assessment.setTeam(team);
         
-        TeamMember member = new TeamMember("userId", teamId, ERole.ROLE_TEAM_MEMBER);
+        User user = new User();
+        user.setId("userId");
+        TeamMember member = new TeamMember(user, team, ERole.ROLE_TEAM_MEMBER);
         
         when(assessmentRepository.findById(assessmentId)).thenReturn(Optional.of(assessment));
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
-        when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
+        when(teamMemberRepository.findByUser_IdAndTeam_Id("userId", teamId)).thenReturn(Optional.of(member));
 
         mockMvc.perform(get("/api/assessments/" + assessmentId))
                 .andExpect(status().isOk());
@@ -214,10 +222,12 @@ public class AssessmentControllerTest {
         assessment.setId("assessment1");
         assessment.setTeam(team);
         
-        TeamMember member = new TeamMember("userId", teamId, ERole.ROLE_TEAM_MEMBER);
+        User user = new User();
+        user.setId("userId");
+        TeamMember member = new TeamMember(user, team, ERole.ROLE_TEAM_MEMBER);
         
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
-        when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
+        when(teamMemberRepository.findByUser_IdAndTeam_Id("userId", teamId)).thenReturn(Optional.of(member));
         when(assessmentRepository.findByTeam(team)).thenReturn(Collections.singletonList(assessment));
 
         mockMvc.perform(get("/api/assessments/team/" + teamId))

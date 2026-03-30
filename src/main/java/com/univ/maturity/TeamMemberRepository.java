@@ -1,12 +1,13 @@
 package com.univ.maturity;
 
-import org.springframework.data.mongodb.repository.MongoRepository;
 import java.util.List;
 import java.util.Optional;
 
-public interface TeamMemberRepository extends MongoRepository<TeamMember, String> {
-    List<TeamMember> findByUserId(String userId);
-    List<TeamMember> findByTeamId(String teamId);
-    Optional<TeamMember> findByUserIdAndTeamId(String userId, String teamId);
-    void deleteByTeamId(String teamId);
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface TeamMemberRepository extends JpaRepository<TeamMember, String> {
+    List<TeamMember> findByUser_Id(String userId);
+    List<TeamMember> findByTeam_Id(String teamId);
+    Optional<TeamMember> findByUser_IdAndTeam_Id(String userId, String teamId);
+    void deleteByTeam_Id(String teamId);
 }

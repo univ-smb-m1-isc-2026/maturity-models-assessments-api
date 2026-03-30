@@ -114,10 +114,12 @@ public class MaturityModelControllerTest {
         owner.setId("ownerId");
         team.setOwner(owner);
 
-        TeamMember member = new TeamMember("userId", teamId, ERole.ROLE_PMO);
+        User user = new User();
+        user.setId("userId");
+        TeamMember member = new TeamMember(user, team, ERole.ROLE_PMO);
 
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
-        when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
+        when(teamMemberRepository.findByUser_IdAndTeam_Id("userId", teamId)).thenReturn(Optional.of(member));
         when(maturityModelRepository.existsByName("New Model")).thenReturn(false);
         when(maturityModelRepository.save(any(MaturityModel.class))).thenReturn(model);
 
@@ -149,10 +151,12 @@ public class MaturityModelControllerTest {
         owner.setId("ownerId");
         team.setOwner(owner);
 
-        TeamMember member = new TeamMember("userId", teamId, ERole.ROLE_TEAM_MEMBER);
+        User user = new User();
+        user.setId("userId");
+        TeamMember member = new TeamMember(user, team, ERole.ROLE_TEAM_MEMBER);
 
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
-        when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
+        when(teamMemberRepository.findByUser_IdAndTeam_Id("userId", teamId)).thenReturn(Optional.of(member));
 
         mockMvc.perform(post("/api/models")
                 .with(csrf())

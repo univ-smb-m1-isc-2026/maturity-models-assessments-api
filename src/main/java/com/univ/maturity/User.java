@@ -3,17 +3,34 @@ package com.univ.maturity;
 import java.util.HashSet;
 import java.util.Set;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.annotation.Transient;
-import org.springframework.data.mongodb.core.mapping.Document;
+import org.hibernate.annotations.UuidGenerator;
 
-@Document(collection = "users")
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+
+@Entity
+@Table(name = "users")
 public class User {
     @Id
+    @GeneratedValue
+    @UuidGenerator
+    @Column(length = 36)
     private String id;
+
+    @Column(nullable = false, unique = true)
     private String email;
+
+    @Column(nullable = false)
     private String firstName;
+
+    @Column(nullable = false)
     private String lastName;
+
+    @Column(nullable = false)
     private String password;
     private boolean enabled;
     private boolean using2FA;

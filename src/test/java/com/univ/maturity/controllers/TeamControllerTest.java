@@ -24,6 +24,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.univ.maturity.ERole;
+import com.univ.maturity.InvitationRepository;
+import com.univ.maturity.InvitationStatus;
 import com.univ.maturity.Team;
 import com.univ.maturity.TeamMember;
 import com.univ.maturity.TeamMemberRepository;
@@ -67,6 +69,9 @@ public class TeamControllerTest {
 
     @MockBean
     private JwtUtils jwtUtils;
+    
+    @MockBean
+    private InvitationRepository invitationRepository;
 
     @Autowired
     private ObjectMapper objectMapper;
@@ -77,6 +82,7 @@ public class TeamControllerTest {
         when(userDetailsService.loadUserByUsername("user")).thenReturn(userDetails);
         Objects.requireNonNull(authEntryPointJwt);
         Objects.requireNonNull(jwtUtils);
+        Objects.requireNonNull(invitationRepository);
     }
 
     @Test
@@ -111,10 +117,14 @@ public class TeamControllerTest {
         team.setId(teamId);
         team.setName("Test Team");
         
-        TeamMember member = new TeamMember("userId", teamId, ERole.ROLE_TEAM_LEADER);
+        User user = new User();
+        user.setId("userId");
+        TeamMember member = new TeamMember(user, team, ERole.ROLE_TEAM_LEADER);
 
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
-        when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
+        when(teamMemberRepository.findByUser_IdAndTeam_Id("userId", teamId)).thenReturn(Optional.of(member));
+        when(invitationRepository.findByInviteeEmailAndTeamIdAndStatus("invitee@test.com", teamId, InvitationStatus.PENDING)).thenReturn(Optional.empty());
+        when(userRepository.findById("userId")).thenReturn(Optional.of(new User()));
         when(userRepository.findByEmail("invitee@test.com")).thenReturn(Optional.empty());
         when(emailService.sendInvitationEmail(anyString(), anyString(), anyString())).thenReturn(true);
 
@@ -137,10 +147,12 @@ public class TeamControllerTest {
         Team team = new Team();
         team.setId(teamId);
         
-        TeamMember member = new TeamMember("userId", teamId, ERole.ROLE_TEAM_MEMBER);
+        User user = new User();
+        user.setId("userId");
+        TeamMember member = new TeamMember(user, team, ERole.ROLE_TEAM_MEMBER);
 
         when(teamRepository.findById(teamId)).thenReturn(Optional.of(team));
-        when(teamMemberRepository.findByUserIdAndTeamId("userId", teamId)).thenReturn(Optional.of(member));
+        when(teamMemberRepository.findByUser_IdAndTeam_Id("userId", teamId)).thenReturn(Optional.of(member));
 
         mockMvc.perform(post("/api/teams/" + teamId + "/invite")
                 .with(csrf())

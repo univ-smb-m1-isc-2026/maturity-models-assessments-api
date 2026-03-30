@@ -49,7 +49,7 @@ public class MaturityModelController {
     @GetMapping("/team/{teamId}")
     public ResponseEntity<?> getModelsByTeam(@PathVariable String teamId) {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), teamId);
+        Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), teamId);
         
         Optional<com.univ.maturity.Team> teamOpt = teamRepository.findById(Objects.requireNonNull(teamId));
         boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
@@ -70,7 +70,7 @@ public class MaturityModelController {
         
         if (model.getTeamId() != null) {
             UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-            Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), model.getTeamId());
+            Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), model.getTeamId());
             Optional<com.univ.maturity.Team> teamOpt = teamRepository.findById(Objects.requireNonNull(model.getTeamId()));
             boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
 
@@ -97,7 +97,7 @@ public class MaturityModelController {
         
         boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
         
-        Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), maturityModel.getTeamId());
+        Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), maturityModel.getTeamId());
         boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
         
         if (!isOwner && !isPMO) {
@@ -125,7 +125,7 @@ public class MaturityModelController {
         if (model.getTeamId() != null) {
              Optional<com.univ.maturity.Team> teamOpt = teamRepository.findById(Objects.requireNonNull(model.getTeamId()));
              boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
-             Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), model.getTeamId());
+             Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), model.getTeamId());
              boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
              
              if (!isOwner && !isPMO) {
@@ -154,7 +154,7 @@ public class MaturityModelController {
         if (model.getTeamId() != null) {
             Optional<com.univ.maturity.Team> teamOpt = teamRepository.findById(Objects.requireNonNull(model.getTeamId()));
             boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
-            Optional<TeamMember> memberOpt = teamMemberRepository.findByUserIdAndTeamId(userDetails.getId(), model.getTeamId());
+            Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), model.getTeamId());
             boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
             
             if (!isOwner && !isPMO) {
