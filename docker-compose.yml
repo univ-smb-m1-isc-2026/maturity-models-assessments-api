@@ -20,7 +20,7 @@ services:
     ports:
       - "5432:5432"
     environment:
-      - POSTGRES_DB=maturity_db
+      - POSTGRES_DB=db_mmaturity
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     volumes:
