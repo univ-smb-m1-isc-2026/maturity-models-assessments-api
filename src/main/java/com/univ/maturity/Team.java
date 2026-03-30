@@ -1,21 +1,33 @@
 package com.univ.maturity;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-
-import org.springframework.data.annotation.Transient;
 import java.util.ArrayList;
 import java.util.List;
 
-@Document(collection = "teams")
+import org.hibernate.annotations.UuidGenerator;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
+
+@Entity
+@Table(name = "teams")
 public class Team {
     @Id
+    @GeneratedValue
+    @UuidGenerator
+    @Column(length = 36)
     private String id;
 
+    @Column(nullable = false, unique = true)
     private String name;
 
-    @DBRef
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "owner_id", nullable = false)
     private User owner;
 
     @Transient

@@ -1,30 +1,61 @@
 package com.univ.maturity;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.Document;
 import java.util.HashSet;
 import java.util.Set;
 
-@Document(collection = "team_members")
+import org.hibernate.annotations.UuidGenerator;
+
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
+
+@Entity
+@Table(
+    name = "team_members",
+    uniqueConstraints = { @UniqueConstraint(columnNames = { "user_id", "team_id" }) }
+)
 public class TeamMember {
     @Id
+    @GeneratedValue
+    @UuidGenerator
+    @Column(length = 36)
     private String id;
 
-    private String userId;
-    private String teamId;
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
+
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "team_id", nullable = false)
+    private Team team;
+
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "team_member_roles", joinColumns = @JoinColumn(name = "team_member_id"))
+    @Column(name = "role", nullable = false)
+    @Enumerated(EnumType.STRING)
     private Set<ERole> roles = new HashSet<>();
 
     public TeamMember() {}
 
-    public TeamMember(String userId, String teamId, Set<ERole> roles) {
-        this.userId = userId;
-        this.teamId = teamId;
+    public TeamMember(User user, Team team, Set<ERole> roles) {
+        this.user = user;
+        this.team = team;
         this.roles = roles;
     }
 
-    public TeamMember(String userId, String teamId, ERole role) {
-        this.userId = userId;
-        this.teamId = teamId;
+    public TeamMember(User user, Team team, ERole role) {
+        this.user = user;
+        this.team = team;
         this.roles.add(role);
     }
 
@@ -36,20 +67,20 @@ public class TeamMember {
         this.id = id;
     }
 
-    public String getUserId() {
-        return userId;
+    public User getUser() {
+        return user;
     }
 
-    public void setUserId(String userId) {
-        this.userId = userId;
+    public void setUser(User user) {
+        this.user = user;
     }
 
-    public String getTeamId() {
-        return teamId;
+    public Team getTeam() {
+        return team;
     }
 
-    public void setTeamId(String teamId) {
-        this.teamId = teamId;
+    public void setTeam(Team team) {
+        this.team = team;
     }
 
     public Set<ERole> getRoles() {

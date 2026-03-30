@@ -1,26 +1,49 @@
 package com.univ.maturity;
 
-import org.springframework.data.annotation.Id;
-import org.springframework.data.mongodb.core.mapping.DBRef;
-import org.springframework.data.mongodb.core.mapping.Document;
-
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
-@Document(collection = "assessments")
+import org.hibernate.annotations.UuidGenerator;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import jakarta.persistence.AttributeConverter;
+import jakarta.persistence.Column;
+import jakarta.persistence.Convert;
+import jakarta.persistence.Converter;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+
+@Entity
+@Table(name = "assessments")
 public class Assessment {
     @Id
+    @GeneratedValue
+    @UuidGenerator
+    @Column(length = 36)
     private String id;
 
-    @DBRef
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "team_id", nullable = false)
     private Team team;
 
-    @DBRef
+    @ManyToOne(optional = false)
+    @JoinColumn(name = "maturity_model_id", nullable = false)
     private MaturityModel maturityModel;
 
+    @Column(nullable = false)
     private LocalDateTime date;
 
+    @Column(columnDefinition = "text", nullable = false)
+    @Convert(converter = SubmissionsConverter.class)
     private List<Submission> submissions = new ArrayList<>();
 
     public Assessment() {}
@@ -69,5 +92,31 @@ public class Assessment {
 
     public void setSubmissions(List<Submission> submissions) {
         this.submissions = submissions;
+    }
+
+    @Converter
+    public static class SubmissionsConverter implements AttributeConverter<List<Submission>, String> {
+        private static final ObjectMapper MAPPER = new ObjectMapper().findAndRegisterModules();
+        private static final TypeReference<List<Submission>> TYPE = new TypeReference<>() {};
+
+        @Override
+        public String convertToDatabaseColumn(List<Submission> attribute) {
+            try {
+                if (attribute == null) return "[]";
+                return MAPPER.writeValueAsString(attribute);
+            } catch (JsonProcessingException e) {
+                throw new IllegalArgumentException(e);
+            }
+        }
+
+        @Override
+        public List<Submission> convertToEntityAttribute(String dbData) {
+            try {
+                if (dbData == null || dbData.isBlank()) return new ArrayList<>();
+                return MAPPER.readValue(dbData, TYPE);
+            } catch (IOException e) {
+                throw new IllegalArgumentException(e);
+            }
+        }
     }
 }

@@ -23,7 +23,7 @@ public class HelloController {
         
         response.put("db_status", "Connected - Users count: " + userRepository.count());
         
-        response.put("message", "Hello World from Spring Boot API & MongoDB!");
+        response.put("message", "Hello World from Spring Boot API & PostgreSQL!");
         return response;
     }
 }

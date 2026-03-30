@@ -1,10 +1,10 @@
 package com.univ.maturity;
 
-import org.springframework.data.mongodb.repository.MongoRepository;
-
 import java.util.List;
 
-public interface MaturityModelRepository extends MongoRepository<MaturityModel, String> {
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface MaturityModelRepository extends JpaRepository<MaturityModel, String> {
     Boolean existsByName(String name);
     List<MaturityModel> findByTeamId(String teamId);
 }
