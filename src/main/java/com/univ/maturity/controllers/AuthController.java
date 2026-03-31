@@ -13,6 +13,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -75,6 +76,11 @@ public class AuthController {
     EmailService emailService;
 
     private final GoogleAuthenticator gAuth = new GoogleAuthenticator();
+
+    @GetMapping({"", "/"})
+    public ResponseEntity<?> index() {
+        return ResponseEntity.ok(new MessageResponse("Auth API root. Available endpoints: POST /signin, POST /signup, POST /verify, POST /verify/resend, POST /2fa/generate, POST /2fa/enable, POST /2fa/disable"));
+    }
 
     @PostMapping("/signin")
     @SuppressWarnings("null")
