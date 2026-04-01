@@ -29,6 +29,8 @@ jobs:
 
       - name: Maven Package
         run: mvn -B package -DskipTests --file pom.xml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Log in to the Container registry
         uses: docker/login-action@v3
