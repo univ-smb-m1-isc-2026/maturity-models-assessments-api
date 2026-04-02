@@ -6,9 +6,14 @@ import java.util.Set;
 import org.hibernate.annotations.UuidGenerator;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.CollectionTable;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
@@ -36,8 +41,14 @@ public class User {
     private boolean using2FA;
     private String secret2FA;
 
-    @Transient
+    @ElementCollection
+    @CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
+    @Column(name = "role")
+    @Enumerated(EnumType.STRING)
     private Set<ERole> roles = new HashSet<>();
+
+    @Transient
+    private Set<ERole> teamRoles = new HashSet<>();
 
     public User() {}
 
@@ -119,5 +130,13 @@ public class User {
 
     public void setRoles(Set<ERole> roles) {
         this.roles = roles;
+    }
+
+    public Set<ERole> getTeamRoles() {
+        return teamRoles;
+    }
+
+    public void setTeamRoles(Set<ERole> teamRoles) {
+        this.teamRoles = teamRoles;
     }
 }

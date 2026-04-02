@@ -3,6 +3,7 @@ package com.univ.maturity.controllers;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,11 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/api/auth")
 public class AuthController {
+    private static final Set<com.univ.maturity.ERole> VALID_SIGNUP_ROLES = Set.of(
+            com.univ.maturity.ERole.ROLE_PMO,
+            com.univ.maturity.ERole.ROLE_TEAM_LEADER,
+            com.univ.maturity.ERole.ROLE_TEAM_MEMBER);
+
     @Autowired
     AuthenticationManager authenticationManager;
 
@@ -142,6 +148,20 @@ public class AuthController {
                 signUpRequest.getLastName(),
                 encoder.encode(signUpRequest.getPassword()));
 
+        try {
+            if (signUpRequest.getTeamId() == null || signUpRequest.getTeamId().isEmpty()) {
+                Set<com.univ.maturity.ERole> selectedRoles = resolveSignupRoles(signUpRequest.getRoles());
+                if (selectedRoles.isEmpty()) {
+                    selectedRoles = Set.of(com.univ.maturity.ERole.ROLE_TEAM_MEMBER);
+                }
+                user.setRoles(selectedRoles);
+            } else {
+                user.setRoles(Set.of(com.univ.maturity.ERole.ROLE_TEAM_MEMBER));
+            }
+        } catch (IllegalArgumentException exception) {
+            return ResponseEntity.badRequest().body(new MessageResponse(exception.getMessage()));
+        }
+
         userRepository.save(user);
 
         if (signUpRequest.getTeamId() != null && !signUpRequest.getTeamId().isEmpty()) {
@@ -184,6 +204,36 @@ public class AuthController {
             userRepository.delete(user);
             return ResponseEntity.internalServerError().body(new MessageResponse("Error: Unable to send verification email. Please try again later."));
         }
+    }
+
+    private Set<com.univ.maturity.ERole> resolveSignupRoles(Set<String> roles) {
+        if (roles == null || roles.isEmpty()) {
+            return Set.of();
+        }
+
+        Set<com.univ.maturity.ERole> resolvedRoles = roles.stream()
+                .map(String::trim)
+                .map(String::toUpperCase)
+                .map(roleName -> roleName.startsWith("ROLE_") ? roleName : "ROLE_" + roleName)
+                .map(roleName -> {
+                    try {
+                        return com.univ.maturity.ERole.valueOf(roleName);
+                    } catch (IllegalArgumentException exception) {
+                        return null;
+                    }
+                })
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        if (resolvedRoles.size() != roles.size()) {
+            throw new IllegalArgumentException("Error: Invalid role selected!");
+        }
+
+        if (!VALID_SIGNUP_ROLES.containsAll(resolvedRoles)) {
+            throw new IllegalArgumentException("Error: Invalid role selected!");
+        }
+
+        return resolvedRoles;
     }
 
     @PostMapping("/2fa/generate")

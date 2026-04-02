@@ -27,6 +27,8 @@ import com.univ.maturity.Team;
 import com.univ.maturity.TeamMember;
 import com.univ.maturity.TeamMemberRepository;
 import com.univ.maturity.TeamRepository;
+import com.univ.maturity.User;
+import com.univ.maturity.UserRepository;
 import com.univ.maturity.payload.request.StartAssessmentRequest;
 import com.univ.maturity.payload.response.MessageResponse;
 import com.univ.maturity.security.services.UserDetailsImpl;
@@ -50,9 +52,19 @@ public class AssessmentController {
     @Autowired
     TeamMemberRepository teamMemberRepository;
 
+    @Autowired
+    UserRepository userRepository;
+
     @PostMapping("/start")
     public ResponseEntity<?> startAssessment(@Valid @RequestBody StartAssessmentRequest request) {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User requester = userRepository.findById(Objects.requireNonNull(userDetails.getId())).orElse(null);
+        if (requester == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+        }
+        if (isProfileMemberOnly(requester)) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: Team Member profiles cannot start assessments."));
+        }
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(request.getTeamId()));
         if (teamOpt.isEmpty()) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
@@ -74,6 +86,12 @@ public class AssessmentController {
         Assessment assessment = new Assessment(teamOpt.get(), modelOpt.get());
         assessmentRepository.save(assessment);
         return ResponseEntity.ok(assessment);
+    }
+
+    private boolean isProfileMemberOnly(User user) {
+        java.util.Set<ERole> profileRoles = user.getRoles();
+        boolean hasManagementProfile = profileRoles.contains(ERole.ROLE_PMO) || profileRoles.contains(ERole.ROLE_TEAM_LEADER);
+        return profileRoles.contains(ERole.ROLE_TEAM_MEMBER) && !hasManagementProfile;
     }
 
     @GetMapping("/team/{teamId}")

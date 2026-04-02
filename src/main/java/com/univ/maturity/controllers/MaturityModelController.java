@@ -22,6 +22,8 @@ import com.univ.maturity.MaturityModel;
 import com.univ.maturity.MaturityModelRepository;
 import com.univ.maturity.TeamMember;
 import com.univ.maturity.TeamMemberRepository;
+import com.univ.maturity.User;
+import com.univ.maturity.UserRepository;
 import com.univ.maturity.payload.response.MessageResponse;
 import com.univ.maturity.security.services.UserDetailsImpl;
 
@@ -40,6 +42,9 @@ public class MaturityModelController {
 
     @Autowired
     TeamMemberRepository teamMemberRepository;
+
+    @Autowired
+    UserRepository userRepository;
 
     @GetMapping
     public List<MaturityModel> getAllModels() {
@@ -85,6 +90,13 @@ public class MaturityModelController {
     @PostMapping
     public ResponseEntity<?> createModel(@Valid @RequestBody MaturityModel maturityModel) {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User requester = userRepository.findById(Objects.requireNonNull(userDetails.getId())).orElse(null);
+        if (requester == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+        }
+        if (isProfileMemberOnly(requester)) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: Team Member profiles cannot create maturity models."));
+        }
         
         if (maturityModel.getTeamId() == null) {
              return ResponseEntity.badRequest().body(new MessageResponse("Error: Team ID is required."));
@@ -115,6 +127,13 @@ public class MaturityModelController {
     @PutMapping("/{id}")
     public ResponseEntity<?> updateModel(@PathVariable String id, @Valid @RequestBody MaturityModel maturityModelRequest) {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User requester = userRepository.findById(Objects.requireNonNull(userDetails.getId())).orElse(null);
+        if (requester == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+        }
+        if (isProfileMemberOnly(requester)) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: Team Member profiles cannot update maturity models."));
+        }
         Optional<MaturityModel> modelOpt = maturityModelRepository.findById(Objects.requireNonNull(id));
         
         if (modelOpt.isEmpty()) {
@@ -150,6 +169,13 @@ public class MaturityModelController {
         
         MaturityModel model = modelOpt.get();
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User requester = userRepository.findById(Objects.requireNonNull(userDetails.getId())).orElse(null);
+        if (requester == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+        }
+        if (isProfileMemberOnly(requester)) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: Team Member profiles cannot delete maturity models."));
+        }
         
         if (model.getTeamId() != null) {
             Optional<com.univ.maturity.Team> teamOpt = teamRepository.findById(Objects.requireNonNull(model.getTeamId()));
@@ -164,5 +190,11 @@ public class MaturityModelController {
         
         maturityModelRepository.deleteById(id);
         return ResponseEntity.ok(new MessageResponse("Maturity Model deleted successfully!"));
+    }
+
+    private boolean isProfileMemberOnly(User user) {
+        java.util.Set<ERole> profileRoles = user.getRoles();
+        boolean hasManagementProfile = profileRoles.contains(ERole.ROLE_PMO) || profileRoles.contains(ERole.ROLE_TEAM_LEADER);
+        return profileRoles.contains(ERole.ROLE_TEAM_MEMBER) && !hasManagementProfile;
     }
 }

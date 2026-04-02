@@ -94,7 +94,7 @@ public class TeamController {
                 teamMembers.stream()
                     .filter(tm -> tm.getUser().getId().equals(member.getId()))
                     .findFirst()
-                    .ifPresent(tm -> member.setRoles(tm.getRoles()));
+                    .ifPresent(tm -> member.setTeamRoles(tm.getRoles()));
             }
 
             team.setMembers(members);
@@ -110,6 +110,12 @@ public class TeamController {
 
         if (user == null) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+        }
+
+        Set<ERole> profileRoles = user.getRoles();
+        boolean hasTeamCreationRole = profileRoles.contains(ERole.ROLE_PMO) || profileRoles.contains(ERole.ROLE_TEAM_LEADER);
+        if (!hasTeamCreationRole) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: Team members cannot create a team. You must be invited to join one."));
         }
 
         if (teamRepository.existsByName(teamRequest.getName())) {
@@ -133,6 +139,13 @@ public class TeamController {
     @PostMapping("/{id}/invite")
     public ResponseEntity<?> inviteMember(@PathVariable String id, @Valid @RequestBody InviteMemberRequest inviteRequest) {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User requester = userRepository.findById(Objects.requireNonNull(userDetails.getId())).orElse(null);
+        if (requester == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+        }
+        if (isProfileMemberOnly(requester)) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: Team Member profiles cannot invite members."));
+        }
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(id));
 
         if (teamOpt.isEmpty()) {
@@ -405,6 +418,13 @@ public class TeamController {
     @PutMapping("/{id}/members/{userId}/roles")
     public ResponseEntity<?> updateMemberRoles(@PathVariable String id, @PathVariable String userId, @Valid @RequestBody UpdateUserRolesRequest rolesRequest) {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User requester = userRepository.findById(Objects.requireNonNull(userDetails.getId())).orElse(null);
+        if (requester == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+        }
+        if (isProfileMemberOnly(requester)) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: Team Member profiles cannot edit roles."));
+        }
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(id));
 
         if (teamOpt.isEmpty()) {
@@ -448,5 +468,11 @@ public class TeamController {
         teamMemberRepository.save(memberShip);
 
         return ResponseEntity.ok(new MessageResponse("User roles updated successfully!"));
+    }
+
+    private boolean isProfileMemberOnly(User user) {
+        Set<ERole> profileRoles = user.getRoles();
+        boolean hasManagementProfile = profileRoles.contains(ERole.ROLE_PMO) || profileRoles.contains(ERole.ROLE_TEAM_LEADER);
+        return profileRoles.contains(ERole.ROLE_TEAM_MEMBER) && !hasManagementProfile;
     }
 }
