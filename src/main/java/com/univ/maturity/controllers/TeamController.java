@@ -431,6 +431,7 @@ public class TeamController {
             return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
         }
         
+        boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
         Optional<TeamMember> requesterMemberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), id);
         boolean isPMO = requesterMemberOpt.isPresent() && requesterMemberOpt.get().getRoles().contains(ERole.ROLE_PMO);
 

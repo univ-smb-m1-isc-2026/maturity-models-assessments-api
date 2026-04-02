@@ -107,6 +107,7 @@ public class MaturityModelController {
                return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
         }
         
+        boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
         Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), maturityModel.getTeamId());
         boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
         
@@ -140,6 +141,8 @@ public class MaturityModelController {
         
         MaturityModel model = modelOpt.get();
         if (model.getTeamId() != null) {
+             Optional<com.univ.maturity.Team> modelTeamOpt = teamRepository.findById(Objects.requireNonNull(model.getTeamId()));
+             boolean isOwner = modelTeamOpt.isPresent() && modelTeamOpt.get().getOwner().getId().equals(userDetails.getId());
              Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), model.getTeamId());
              boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
              
@@ -174,6 +177,8 @@ public class MaturityModelController {
         }
         
         if (model.getTeamId() != null) {
+            Optional<com.univ.maturity.Team> modelTeamOpt = teamRepository.findById(Objects.requireNonNull(model.getTeamId()));
+            boolean isOwner = modelTeamOpt.isPresent() && modelTeamOpt.get().getOwner().getId().equals(userDetails.getId());
             Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), model.getTeamId());
             boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
             
