@@ -14,6 +14,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import jakarta.persistence.Transient;
 
@@ -49,6 +51,14 @@ public class User {
 
     @Transient
     private Set<ERole> teamRoles = new HashSet<>();
+
+    @PrePersist
+    @PreUpdate
+    private void normalizeEmail() {
+        if (this.email != null) {
+            this.email = this.email.toLowerCase();
+        }
+    }
 
     public User() {}
 

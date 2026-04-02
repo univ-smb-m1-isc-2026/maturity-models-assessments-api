@@ -94,8 +94,8 @@ public class MaturityModelController {
         if (requester == null) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
         }
-        if (isProfileMemberOnly(requester)) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: Team Member profiles cannot create maturity models."));
+        if (!isProfilePMO(requester)) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: Only PMO profile can create maturity models."));
         }
         
         if (maturityModel.getTeamId() == null) {
@@ -107,13 +107,9 @@ public class MaturityModelController {
              return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
         }
         
-        boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
-        
         Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), maturityModel.getTeamId());
-        boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
-        
-        if (!isOwner && !isPMO) {
-             return ResponseEntity.status(403).body(new MessageResponse("Error: You must be the Team Owner or PMO to create a model for this team."));
+        if (memberOpt.isEmpty()) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: You must be a member of this team to create a model for it."));
         }
 
         if (maturityModelRepository.existsByName(maturityModel.getName())) {
@@ -131,8 +127,8 @@ public class MaturityModelController {
         if (requester == null) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
         }
-        if (isProfileMemberOnly(requester)) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: Team Member profiles cannot update maturity models."));
+        if (!isProfilePMO(requester)) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: Only PMO profile can update maturity models."));
         }
         Optional<MaturityModel> modelOpt = maturityModelRepository.findById(Objects.requireNonNull(id));
         
@@ -142,13 +138,9 @@ public class MaturityModelController {
         
         MaturityModel model = modelOpt.get();
         if (model.getTeamId() != null) {
-             Optional<com.univ.maturity.Team> teamOpt = teamRepository.findById(Objects.requireNonNull(model.getTeamId()));
-             boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
              Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), model.getTeamId());
-             boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
-             
-             if (!isOwner && !isPMO) {
-                 return ResponseEntity.status(403).body(new MessageResponse("Error: Only Team Owner or PMO can update this model."));
+             if (memberOpt.isEmpty()) {
+                 return ResponseEntity.status(403).body(new MessageResponse("Error: You must be a member of this team to update this model."));
              }
         }
         
@@ -173,18 +165,14 @@ public class MaturityModelController {
         if (requester == null) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
         }
-        if (isProfileMemberOnly(requester)) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: Team Member profiles cannot delete maturity models."));
+        if (!isProfilePMO(requester)) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: Only PMO profile can delete maturity models."));
         }
         
         if (model.getTeamId() != null) {
-            Optional<com.univ.maturity.Team> teamOpt = teamRepository.findById(Objects.requireNonNull(model.getTeamId()));
-            boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
             Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), model.getTeamId());
-            boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
-            
-            if (!isOwner && !isPMO) {
-                return ResponseEntity.status(403).body(new MessageResponse("Error: Only Team Owner or PMO can delete this model."));
+            if (memberOpt.isEmpty()) {
+                return ResponseEntity.status(403).body(new MessageResponse("Error: You must be a member of this team to delete this model."));
             }
         }
         
@@ -196,5 +184,9 @@ public class MaturityModelController {
         java.util.Set<ERole> profileRoles = user.getRoles();
         boolean hasManagementProfile = profileRoles.contains(ERole.ROLE_PMO) || profileRoles.contains(ERole.ROLE_TEAM_LEADER);
         return profileRoles.contains(ERole.ROLE_TEAM_MEMBER) && !hasManagementProfile;
+    }
+
+    private boolean isProfilePMO(User user) {
+        return user.getRoles().contains(ERole.ROLE_PMO);
     }
 }

@@ -92,13 +92,13 @@ public class AuthController {
     @SuppressWarnings("null")
     public ResponseEntity<?> authenticateUser(@Valid @RequestBody LoginRequest loginRequest) {
 
-        User existingUser = userRepository.findByEmail(loginRequest.getEmail()).orElse(null);
+        User existingUser = userRepository.findByEmailIgnoreCase(loginRequest.getEmail()).orElse(null);
         if (existingUser != null && !existingUser.isEnabled()) {
             return ResponseEntity.status(403).body(new MessageResponse("EMAIL_NOT_VERIFIED"));
         }
 
         Authentication authentication = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword()));
+                new UsernamePasswordAuthenticationToken(loginRequest.getEmail().toLowerCase(), loginRequest.getPassword()));
 
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         User user = userRepository.findById(userDetails.getId()).orElse(null);
@@ -137,13 +137,13 @@ public class AuthController {
 
     @PostMapping("/signup")
     public ResponseEntity<?> registerUser(@Valid @RequestBody SignupRequest signUpRequest) {
-        if (userRepository.existsByEmail(signUpRequest.getEmail())) {
+        if (userRepository.existsByEmailIgnoreCase(signUpRequest.getEmail())) {
             return ResponseEntity
                     .badRequest()
                     .body(new MessageResponse("Error: Email is already in use!"));
         }
 
-        User user = new User(signUpRequest.getEmail(),
+        User user = new User(signUpRequest.getEmail().toLowerCase(),
                 signUpRequest.getFirstName(),
                 signUpRequest.getLastName(),
                 encoder.encode(signUpRequest.getPassword()));
@@ -173,7 +173,7 @@ public class AuthController {
                     teamMemberRepository.save(member);
                 }
                 
-                invitationRepository.findByInviteeEmailAndTeamIdAndStatus(user.getEmail(), teamId, InvitationStatus.PENDING)
+                invitationRepository.findByInviteeEmailAndTeamIdAndStatus(user.getEmail().toLowerCase(), teamId, InvitationStatus.PENDING)
                     .ifPresent(inv -> {
                         if (inv.getExpiresAt() != null && inv.getExpiresAt().isBefore(java.time.Instant.now())) {
                             inv.setStatus(InvitationStatus.EXPIRED);
@@ -293,11 +293,11 @@ public class AuthController {
 
     @PostMapping("/verify")
     public ResponseEntity<?> verifyUser(@Valid @RequestBody VerifyRequest verifyRequest) {
-        if (!userRepository.existsByEmail(verifyRequest.getEmail())) {
+        if (!userRepository.existsByEmailIgnoreCase(verifyRequest.getEmail())) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found!"));
         }
 
-        User user = userRepository.findByEmail(verifyRequest.getEmail()).orElse(null);
+        User user = userRepository.findByEmailIgnoreCase(verifyRequest.getEmail()).orElse(null);
         if (user == null) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found!"));
         }
@@ -324,7 +324,7 @@ public class AuthController {
     
     @PostMapping("/verify/resend")
     public ResponseEntity<?> resendVerification(@RequestParam String email) {
-        User user = userRepository.findByEmail(email).orElse(null);
+        User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
         if (user == null) {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found!"));
         }

@@ -189,7 +189,7 @@ public class TeamController {
         invitation.setExpiresAt(now.plusSeconds(invitationTtlHours * 3600L));
         invitationRepository.save(invitation);
         
-        User userToInvite = userRepository.findByEmail(inviteRequest.getEmail()).orElse(null);
+        User userToInvite = userRepository.findByEmailIgnoreCase(inviteRequest.getEmail()).orElse(null);
         String tokenLink = (userToInvite == null)
             ? ("http://localhost:5173/register?teamId=" + team.getId() + "&email=" + inviteRequest.getEmail())
             : ("http://localhost:5173/invitations/accept?token=" + invitation.getToken());
@@ -353,7 +353,7 @@ public class TeamController {
         invitation.setStatus(InvitationStatus.PENDING);
         invitationRepository.save(invitation);
         
-        User userToInvite = userRepository.findByEmail(invitation.getInviteeEmail()).orElse(null);
+        User userToInvite = userRepository.findByEmailIgnoreCase(invitation.getInviteeEmail()).orElse(null);
         String tokenLink = (userToInvite == null)
             ? ("http://localhost:5173/register?teamId=" + id + "&email=" + invitation.getInviteeEmail())
             : ("http://localhost:5173/invitations/accept?token=" + invitation.getToken());
@@ -431,13 +431,11 @@ public class TeamController {
             return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
         }
         
-        boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
-        
         Optional<TeamMember> requesterMemberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), id);
         boolean isPMO = requesterMemberOpt.isPresent() && requesterMemberOpt.get().getRoles().contains(ERole.ROLE_PMO);
 
-        if (!isPMO && !isOwner) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: You do not have permission to update roles."));
+        if (!isPMO) {
+            return ResponseEntity.status(403).body(new MessageResponse("Error: Only PMO can update roles."));
         }
 
         Optional<User> memberUserOpt = userRepository.findById(Objects.requireNonNull(userId));
