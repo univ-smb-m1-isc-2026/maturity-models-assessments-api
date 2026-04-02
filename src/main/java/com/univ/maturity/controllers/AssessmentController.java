@@ -67,7 +67,7 @@ public class AssessmentController {
         }
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(request.getTeamId()));
         if (teamOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
         }
         
         Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), request.getTeamId());
@@ -75,12 +75,12 @@ public class AssessmentController {
         boolean isPMOorLeader = memberOpt.isPresent() && (memberOpt.get().getRoles().contains(ERole.ROLE_PMO) || memberOpt.get().getRoles().contains(ERole.ROLE_TEAM_LEADER));
         
         if (!isOwner && !isPMOorLeader) {
-             return ResponseEntity.status(403).body(new MessageResponse("Error: You must be the Team Owner, PMO or Leader to start an assessment."));
+               return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous devez être le propriétaire de l'équipe, PMO ou chef d'équipe pour démarrer une évaluation."));
         }
 
         Optional<MaturityModel> modelOpt = maturityModelRepository.findById(Objects.requireNonNull(request.getMaturityModelId()));
         if (modelOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Maturity Model not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : modèle de maturité introuvable."));
         }
 
         Assessment assessment = new Assessment(teamOpt.get(), modelOpt.get());
@@ -98,7 +98,7 @@ public class AssessmentController {
     public ResponseEntity<?> getTeamAssessments(@PathVariable String teamId) {
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(teamId));
         if (teamOpt.isEmpty()) {
-             return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
+               return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
         }
         
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
@@ -106,7 +106,7 @@ public class AssessmentController {
         boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
         
         if (memberOpt.isEmpty() && !isOwner) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: You are not a member of this team."));
+            return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous n'êtes pas membre de cette équipe."));
         }
         
         List<Assessment> assessments = assessmentRepository.findByTeam(teamOpt.get());
@@ -117,7 +117,7 @@ public class AssessmentController {
     public ResponseEntity<?> getAssessment(@PathVariable String id) {
         Optional<Assessment> assessmentOpt = assessmentRepository.findById(Objects.requireNonNull(id));
         if (assessmentOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Assessment not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : évaluation introuvable."));
         }
         Assessment assessment = assessmentOpt.get();
         
@@ -128,7 +128,7 @@ public class AssessmentController {
         boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
 
         if (memberOpt.isEmpty() && !isOwner) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: You are not a member of the team associated with this assessment."));
+            return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous n'êtes pas membre de l'équipe associée à cette évaluation."));
         }
         
         return ResponseEntity.ok(assessmentOpt.get());
@@ -138,7 +138,7 @@ public class AssessmentController {
     public ResponseEntity<?> submitAssessment(@PathVariable String id, @RequestBody List<Answer> answers) {
         Optional<Assessment> assessmentOpt = assessmentRepository.findById(Objects.requireNonNull(id));
         if (assessmentOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Assessment not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : évaluation introuvable."));
         }
 
         Assessment assessment = assessmentOpt.get();
@@ -150,7 +150,7 @@ public class AssessmentController {
         boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
 
         if (memberOpt.isEmpty() && !isOwner) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: You are not a member of this team."));
+            return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous n'êtes pas membre de cette équipe."));
         }
 
         List<Submission> submissions = assessment.getSubmissions();

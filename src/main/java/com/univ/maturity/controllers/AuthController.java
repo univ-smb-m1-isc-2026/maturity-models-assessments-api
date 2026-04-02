@@ -18,8 +18,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import com.univ.maturity.InvitationRepository;
 import com.univ.maturity.InvitationStatus;
@@ -85,7 +85,7 @@ public class AuthController {
 
     @GetMapping({"", "/"})
     public ResponseEntity<?> index() {
-        return ResponseEntity.ok(new MessageResponse("Auth API root. Available endpoints: POST /signin, POST /signup, POST /verify, POST /verify/resend, POST /2fa/generate, POST /2fa/enable, POST /2fa/disable"));
+        return ResponseEntity.ok(new MessageResponse("Racine de l'API d'authentification. Points de terminaison disponibles : POST /signin, POST /signup, POST /verify, POST /verify/resend, POST /2fa/generate, POST /2fa/enable, POST /2fa/disable"));
     }
 
     @PostMapping("/signin")
@@ -112,10 +112,10 @@ public class AuthController {
                 int code = Integer.parseInt(loginRequest.getCode());
                 boolean isCodeValid = gAuth.authorize(user.getSecret2FA(), code);
                 if (!isCodeValid) {
-                    return ResponseEntity.status(401).body(new MessageResponse("Error: Invalid 2FA Code"));
+                    return ResponseEntity.status(401).body(new MessageResponse("Erreur : code 2FA invalide."));
                 }
             } catch (NumberFormatException e) {
-                return ResponseEntity.status(401).body(new MessageResponse("Error: Invalid 2FA Code format"));
+                return ResponseEntity.status(401).body(new MessageResponse("Erreur : format du code 2FA invalide."));
             }
         }
 
@@ -140,7 +140,7 @@ public class AuthController {
         if (userRepository.existsByEmailIgnoreCase(signUpRequest.getEmail())) {
             return ResponseEntity
                     .badRequest()
-                    .body(new MessageResponse("Error: Email is already in use!"));
+                    .body(new MessageResponse("Erreur : l'e-mail est déjà utilisé !"));
         }
 
         User user = new User(signUpRequest.getEmail().toLowerCase(),
@@ -196,13 +196,13 @@ public class AuthController {
         try {
             boolean sent = emailService.sendVerificationEmail(user.getEmail(), verificationToken.getToken());
             if (sent) {
-                return ResponseEntity.ok(new MessageResponse("User registered successfully! Please check your email for the verification code."));
+                return ResponseEntity.ok(new MessageResponse("Utilisateur enregistré avec succès ! Veuillez vérifier votre e-mail pour le code de vérification."));
             }
-            return ResponseEntity.ok(new MessageResponse("User registered successfully! Email sending is disabled; check server logs for the verification code."));
+            return ResponseEntity.ok(new MessageResponse("Utilisateur enregistré avec succès ! L'envoi d'e-mails est désactivé ; consultez les journaux du serveur pour le code de vérification."));
         } catch (Exception e) {
             verificationTokenRepository.delete(verificationToken);
             userRepository.delete(user);
-            return ResponseEntity.internalServerError().body(new MessageResponse("Error: Unable to send verification email. Please try again later."));
+            return ResponseEntity.internalServerError().body(new MessageResponse("Erreur : impossible d'envoyer l'e-mail de vérification. Veuillez réessayer plus tard."));
         }
     }
 
@@ -254,24 +254,24 @@ public class AuthController {
         User user = userRepository.findById(userDetails.getId()).orElse(null);
         
         if (user == null) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable."));
         }
 
         try {
             int code = Integer.parseInt(request.getCode());
             boolean isCodeValid = gAuth.authorize(request.getSecret(), code);
             if (!isCodeValid) {
-                 return ResponseEntity.badRequest().body(new MessageResponse("Error: Invalid 2FA Code"));
+                 return ResponseEntity.badRequest().body(new MessageResponse("Erreur : code 2FA invalide."));
             }
         } catch (NumberFormatException e) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Invalid 2FA Code format"));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : format du code 2FA invalide."));
         }
         
         user.setUsing2FA(true);
         user.setSecret2FA(request.getSecret());
         userRepository.save(user);
         
-        return ResponseEntity.ok(new MessageResponse("2FA Enabled successfully"));
+        return ResponseEntity.ok(new MessageResponse("Authentification à deux facteurs activée avec succès."));
     }
     
     @PostMapping("/2fa/disable")
@@ -281,55 +281,55 @@ public class AuthController {
          User user = userRepository.findById(userDetails.getId()).orElse(null);
          
          if (user == null) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+                return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable."));
          }
 
          user.setUsing2FA(false);
          user.setSecret2FA(null);
          userRepository.save(user);
          
-         return ResponseEntity.ok(new MessageResponse("2FA Disabled successfully"));
+         return ResponseEntity.ok(new MessageResponse("Authentification à deux facteurs désactivée avec succès."));
     }
 
     @PostMapping("/verify")
     public ResponseEntity<?> verifyUser(@Valid @RequestBody VerifyRequest verifyRequest) {
-        if (!userRepository.existsByEmailIgnoreCase(verifyRequest.getEmail())) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found!"));
+        if (!userRepository.existsByEmail(verifyRequest.getEmail())) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable !"));
         }
 
         User user = userRepository.findByEmailIgnoreCase(verifyRequest.getEmail()).orElse(null);
         if (user == null) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found!"));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable !"));
         }
         VerificationToken verificationToken = verificationTokenRepository.findByUserId(user.getId());
 
         if (verificationToken == null) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: No token found for this user!"));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : aucun jeton trouvé pour cet utilisateur !"));
         }
 
         if (!verificationToken.getToken().equals(verifyRequest.getCode())) {
-             return ResponseEntity.badRequest().body(new MessageResponse("Error: Invalid code!"));
+             return ResponseEntity.badRequest().body(new MessageResponse("Erreur : code invalide !"));
         }
 
         if (verificationToken.getExpiryDate().isBefore(LocalDateTime.now())) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Code expired!"));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : le code a expiré !"));
         }
 
         user.setEnabled(true);
         userRepository.save(user);
         verificationTokenRepository.delete(verificationToken);
 
-        return ResponseEntity.ok(new MessageResponse("User verified successfully!"));
+        return ResponseEntity.ok(new MessageResponse("Utilisateur vérifié avec succès !"));
     }
     
     @PostMapping("/verify/resend")
     public ResponseEntity<?> resendVerification(@RequestParam String email) {
         User user = userRepository.findByEmailIgnoreCase(email).orElse(null);
         if (user == null) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found!"));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable !"));
         }
         if (user.isEnabled()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: User already verified!"));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur déjà vérifié !"));
         }
         
         VerificationToken existing = verificationTokenRepository.findByUserId(user.getId());
@@ -343,12 +343,12 @@ public class AuthController {
         try {
             boolean sent = emailService.sendVerificationEmail(user.getEmail(), verificationToken.getToken());
             if (sent) {
-                return ResponseEntity.ok(new MessageResponse("Verification email sent! Please check your inbox."));
+                return ResponseEntity.ok(new MessageResponse("E-mail de vérification envoyé ! Veuillez vérifier votre boîte de réception."));
             }
-            return ResponseEntity.ok(new MessageResponse("Verification code generated (email sending disabled)."));
+            return ResponseEntity.ok(new MessageResponse("Code de vérification généré (envoi d'e-mail désactivé)."));
         } catch (Exception e) {
             verificationTokenRepository.delete(verificationToken);
-            return ResponseEntity.internalServerError().body(new MessageResponse("Error: Unable to send verification email. Please try again later."));
+            return ResponseEntity.internalServerError().body(new MessageResponse("Erreur : impossible d'envoyer l'e-mail de vérification. Veuillez réessayer plus tard."));
         }
     }
 }

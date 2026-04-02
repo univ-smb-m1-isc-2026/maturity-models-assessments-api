@@ -30,8 +30,8 @@ public class EmailService {
     private boolean mailEnabled;
 
     public boolean sendVerificationEmail(String toEmail, String code) {
-        String subject = "Verification Code";
-        String message = "Your verification code is: " + code + "\n\nThis code is valid for 10 minutes.";
+        String subject = "Code de vérification";
+        String message = "Votre code de vérification est : " + code + "\n\nCe code est valide pendant 10 minutes.";
 
         if (!mailEnabled) {
             logger.info("Email disabled. Verification code generated for {}", maskEmail(toEmail));
@@ -63,9 +63,9 @@ public class EmailService {
     }
 
     public boolean sendInvitationEmail(String toEmail, String teamName, String invitationLink) {
-        String subject = "Invitation to join team " + teamName;
-        String message = "You have been invited to join the team " + teamName + ".\n\n" +
-                         "Please click the link below to accept the invitation:\n" +
+        String subject = "Invitation à rejoindre l'équipe " + teamName;
+        String message = "Vous avez été invité(e) à rejoindre l'équipe " + teamName + ".\n\n" +
+                         "Veuillez cliquer sur le lien ci-dessous pour accepter l'invitation :\n" +
                          invitationLink;
 
         if (!mailEnabled) {

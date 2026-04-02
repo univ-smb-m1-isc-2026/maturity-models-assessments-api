@@ -60,7 +60,7 @@ public class MaturityModelController {
         boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
 
         if (memberOpt.isEmpty() && !isOwner) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: You are not a member of this team."));
+            return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous n'êtes pas membre de cette équipe."));
         }
         return ResponseEntity.ok(maturityModelRepository.findByTeamId(teamId));
     }
@@ -69,7 +69,7 @@ public class MaturityModelController {
     public ResponseEntity<?> getModelById(@PathVariable String id) {
         Optional<MaturityModel> modelOpt = maturityModelRepository.findById(Objects.requireNonNull(id));
         if (modelOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Model not found!"));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : modèle introuvable !"));
         }
         MaturityModel model = modelOpt.get();
         
@@ -80,7 +80,7 @@ public class MaturityModelController {
             boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
 
             if (memberOpt.isEmpty() && !isOwner) {
-                return ResponseEntity.status(403).body(new MessageResponse("Error: You are not a member of the team this model belongs to."));
+                return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous n'êtes pas membre de l'équipe à laquelle ce modèle appartient."));
             }
         }
         
@@ -99,25 +99,27 @@ public class MaturityModelController {
         }
         
         if (maturityModel.getTeamId() == null) {
-             return ResponseEntity.badRequest().body(new MessageResponse("Error: Team ID is required."));
+               return ResponseEntity.badRequest().body(new MessageResponse("Erreur : l'identifiant de l'équipe est requis."));
         }
         
         Optional<com.univ.maturity.Team> teamOpt = teamRepository.findById(Objects.requireNonNull(maturityModel.getTeamId()));
         if (teamOpt.isEmpty()) {
-             return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
+               return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
         }
         
         Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), maturityModel.getTeamId());
-        if (memberOpt.isEmpty()) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: You must be a member of this team to create a model for it."));
+        boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
+        
+        if (!isOwner && !isPMO) {
+             return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous devez être le propriétaire de l'équipe ou PMO pour créer un modèle pour cette équipe."));
         }
 
         if (maturityModelRepository.existsByName(maturityModel.getName())) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Model name already exists!"));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : le nom du modèle existe déjà !"));
         }
 
         maturityModelRepository.save(maturityModel);
-        return ResponseEntity.ok(new MessageResponse("Maturity Model created successfully!"));
+        return ResponseEntity.ok(new MessageResponse("Modèle de maturité créé avec succès !"));
     }
     
     @PutMapping("/{id}")
@@ -133,14 +135,16 @@ public class MaturityModelController {
         Optional<MaturityModel> modelOpt = maturityModelRepository.findById(Objects.requireNonNull(id));
         
         if (modelOpt.isEmpty()) {
-             return ResponseEntity.badRequest().body(new MessageResponse("Error: Model not found!"));
+               return ResponseEntity.badRequest().body(new MessageResponse("Erreur : modèle introuvable !"));
         }
         
         MaturityModel model = modelOpt.get();
         if (model.getTeamId() != null) {
              Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), model.getTeamId());
-             if (memberOpt.isEmpty()) {
-                 return ResponseEntity.status(403).body(new MessageResponse("Error: You must be a member of this team to update this model."));
+             boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
+             
+             if (!isOwner && !isPMO) {
+                 return ResponseEntity.status(403).body(new MessageResponse("Erreur : seul le propriétaire de l'équipe ou le PMO peut modifier ce modèle."));
              }
         }
         
@@ -149,14 +153,14 @@ public class MaturityModelController {
         
         maturityModelRepository.save(model);
         
-        return ResponseEntity.ok(new MessageResponse("Maturity Model updated successfully!"));
+        return ResponseEntity.ok(new MessageResponse("Modèle de maturité mis à jour avec succès !"));
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteModel(@PathVariable String id) {
         Optional<MaturityModel> modelOpt = maturityModelRepository.findById(Objects.requireNonNull(id));
         if (modelOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Model not found!"));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : modèle introuvable !"));
         }
         
         MaturityModel model = modelOpt.get();
@@ -171,13 +175,15 @@ public class MaturityModelController {
         
         if (model.getTeamId() != null) {
             Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), model.getTeamId());
-            if (memberOpt.isEmpty()) {
-                return ResponseEntity.status(403).body(new MessageResponse("Error: You must be a member of this team to delete this model."));
+            boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
+            
+            if (!isOwner && !isPMO) {
+                return ResponseEntity.status(403).body(new MessageResponse("Erreur : seul le propriétaire de l'équipe ou le PMO peut supprimer ce modèle."));
             }
         }
         
         maturityModelRepository.deleteById(id);
-        return ResponseEntity.ok(new MessageResponse("Maturity Model deleted successfully!"));
+        return ResponseEntity.ok(new MessageResponse("Modèle de maturité supprimé avec succès !"));
     }
 
     private boolean isProfileMemberOnly(User user) {

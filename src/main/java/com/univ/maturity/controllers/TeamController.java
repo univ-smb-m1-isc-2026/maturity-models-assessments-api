@@ -71,7 +71,7 @@ public class TeamController {
         User user = userRepository.findById(Objects.requireNonNull(userDetails.getId())).orElse(null);
         
         if (user == null) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable."));
         }
 
         List<TeamMember> memberships = teamMemberRepository.findByUser_Id(user.getId());
@@ -109,7 +109,7 @@ public class TeamController {
         User user = userRepository.findById(Objects.requireNonNull(userDetails.getId())).orElse(null);
 
         if (user == null) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable."));
         }
 
         Set<ERole> profileRoles = user.getRoles();
@@ -119,7 +119,7 @@ public class TeamController {
         }
 
         if (teamRepository.existsByName(teamRequest.getName())) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Team name already exists!"));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : le nom de l'équipe existe déjà !"));
         }
 
         Team team = new Team(teamRequest.getName(), user);
@@ -133,7 +133,7 @@ public class TeamController {
         TeamMember teamMember = new TeamMember(user, team, roles);
         teamMemberRepository.save(teamMember);
 
-        return ResponseEntity.ok(new MessageResponse("Team created successfully!"));
+        return ResponseEntity.ok(new MessageResponse("Équipe créée avec succès !"));
     }
 
     @PostMapping("/{id}/invite")
@@ -149,7 +149,7 @@ public class TeamController {
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(id));
 
         if (teamOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
         }
 
         Team team = teamOpt.get();
@@ -157,12 +157,12 @@ public class TeamController {
         Optional<TeamMember> requesterMemberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), team.getId());
         
         if (requesterMemberOpt.isEmpty()) {
-                return ResponseEntity.badRequest().body(new MessageResponse("Error: You are not a member of this team."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : vous n'êtes pas membre de cette équipe."));
         }
 
         TeamMember requesterMember = requesterMemberOpt.get();
         if (!requesterMember.getRoles().contains(ERole.ROLE_TEAM_LEADER) && !requesterMember.getRoles().contains(ERole.ROLE_PMO)) {
-                return ResponseEntity.badRequest().body(new MessageResponse("Error: Only the team leader or PMO can invite members."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : seul le chef d'équipe ou le PMO peut inviter des membres."));
         }
 
         Optional<Invitation> existingPending = invitationRepository.findByInviteeEmailAndTeamIdAndStatus(inviteRequest.getEmail(), team.getId(), InvitationStatus.PENDING);
@@ -196,12 +196,12 @@ public class TeamController {
         try {
             boolean sent = emailService.sendInvitationEmail(inviteRequest.getEmail(), team.getName(), tokenLink);
             if (sent) {
-                return ResponseEntity.ok(new MessageResponse("Invitation email sent!"));
+                return ResponseEntity.ok(new MessageResponse("E-mail d'invitation envoyé !"));
             }
-            return ResponseEntity.ok(new MessageResponse("Invitation generated (email sending disabled)."));
+            return ResponseEntity.ok(new MessageResponse("Invitation générée (envoi d'e-mail désactivé)."));
         } catch (Exception e) {
             invitationRepository.delete(invitation);
-            return ResponseEntity.internalServerError().body(new MessageResponse("Error: Unable to send invitation email. Please try again later."));
+            return ResponseEntity.internalServerError().body(new MessageResponse("Erreur : impossible d'envoyer l'e-mail d'invitation. Veuillez réessayer plus tard."));
         }
     }
     
@@ -210,7 +210,7 @@ public class TeamController {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(id));
         if (teamOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
         }
         
         Optional<TeamMember> requesterMemberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), id);
@@ -218,7 +218,7 @@ public class TeamController {
         boolean isPMOorLeader = requesterMemberOpt.isPresent() && (requesterMemberOpt.get().getRoles().contains(ERole.ROLE_PMO) || requesterMemberOpt.get().getRoles().contains(ERole.ROLE_TEAM_LEADER));
         
         if (!isOwner && !isPMOorLeader) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: You do not have permission to view invitations."));
+            return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous n'avez pas l'autorisation de voir les invitations."));
         }
         
         List<Invitation> invitations = invitationRepository.findByTeamId(id);
@@ -243,38 +243,38 @@ public class TeamController {
         Optional<Invitation> invitationOpt = invitationRepository.findByToken(Objects.requireNonNull(token));
         
         if (invitationOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Invitation not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : invitation introuvable."));
         }
         
         Invitation invitation = invitationOpt.get();
         if (invitation.getStatus() == InvitationStatus.REVOKED) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: This invitation was revoked."));
+            return ResponseEntity.status(403).body(new MessageResponse("Erreur : cette invitation a été révoquée."));
         }
         if (invitation.getStatus() == InvitationStatus.EXPIRED) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: This invitation has expired."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : cette invitation a expiré."));
         }
         if (invitation.getStatus() != InvitationStatus.PENDING && invitation.getStatus() != InvitationStatus.ACCEPTED) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Invitation is not valid."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : l'invitation n'est pas valide."));
         }
         
         if (invitation.getStatus() == InvitationStatus.PENDING && isExpired(invitation)) {
             invitation.setStatus(InvitationStatus.EXPIRED);
             invitationRepository.save(invitation);
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: This invitation has expired."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : cette invitation a expiré."));
         }
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(invitation.getTeamId()));
         if (teamOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
         }
         
         Optional<User> userOpt = userRepository.findById(Objects.requireNonNull(userDetails.getId()));
         if (userOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable."));
         }
         
         User user = userOpt.get();
         if (!user.getEmail().equalsIgnoreCase(invitation.getInviteeEmail())) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: This invitation is not for your email."));
+            return ResponseEntity.status(403).body(new MessageResponse("Erreur : cette invitation ne correspond pas à votre adresse e-mail."));
         }
         
         Optional<TeamMember> existingMember = teamMemberRepository.findByUser_IdAndTeam_Id(user.getId(), teamOpt.get().getId());
@@ -283,7 +283,7 @@ public class TeamController {
             invitation.setAcceptedAt(Instant.now());
             invitation.setToken(UUID.randomUUID().toString());
             invitationRepository.save(invitation);
-            return ResponseEntity.ok(new MessageResponse("You are already a member. Invitation marked as accepted."));
+            return ResponseEntity.ok(new MessageResponse("Vous êtes déjà membre. L'invitation a été marquée comme acceptée."));
         }
         
         boolean memberCreated = false;
@@ -304,9 +304,9 @@ public class TeamController {
         invitationRepository.save(invitation);
         
         if (memberCreated) {
-            return ResponseEntity.ok(new MessageResponse("Invitation accepted. You have been added to the team."));
+            return ResponseEntity.ok(new MessageResponse("Invitation acceptée. Vous avez été ajouté(e) à l'équipe."));
         }
-        return ResponseEntity.ok(new MessageResponse("You are already a member. Invitation marked as accepted."));
+        return ResponseEntity.ok(new MessageResponse("Vous êtes déjà membre. L'invitation a été marquée comme acceptée."));
     }
     
     @PostMapping("/{id}/invitations/{invitationId}/resend")
@@ -314,31 +314,31 @@ public class TeamController {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(id));
         if (teamOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
         }
         
         Optional<TeamMember> requesterMemberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), id);
         boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
         boolean isPMOorLeader = requesterMemberOpt.isPresent() && (requesterMemberOpt.get().getRoles().contains(ERole.ROLE_PMO) || requesterMemberOpt.get().getRoles().contains(ERole.ROLE_TEAM_LEADER));
         if (!isOwner && !isPMOorLeader) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: You do not have permission to resend invitations."));
+            return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous n'avez pas l'autorisation de renvoyer des invitations."));
         }
         
         Optional<Invitation> invitationOpt = invitationRepository.findById(Objects.requireNonNull(invitationId));
         if (invitationOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Invitation not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : invitation introuvable."));
         }
         
         Invitation invitation = invitationOpt.get();
         if (!id.equals(invitation.getTeamId())) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Invitation does not belong to this team."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : l'invitation n'appartient pas à cette équipe."));
         }
         
         if (invitation.getStatus() == InvitationStatus.ACCEPTED) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Invitation already accepted."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : invitation déjà acceptée."));
         }
         if (invitation.getStatus() == InvitationStatus.REVOKED) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Invitation was revoked."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : l'invitation a été révoquée."));
         }
         
         String previousToken = invitation.getToken();
@@ -361,16 +361,16 @@ public class TeamController {
         try {
             boolean sent = emailService.sendInvitationEmail(invitation.getInviteeEmail(), teamOpt.get().getName(), tokenLink);
             if (sent) {
-                return ResponseEntity.ok(new MessageResponse("Invitation email resent!"));
+                return ResponseEntity.ok(new MessageResponse("E-mail d'invitation renvoyé !"));
             }
-            return ResponseEntity.ok(new MessageResponse("Invitation updated (email sending disabled)."));
+            return ResponseEntity.ok(new MessageResponse("Invitation mise à jour (envoi d'e-mail désactivé)."));
         } catch (Exception e) {
             invitation.setToken(previousToken);
             invitation.setLastSentAt(previousLastSentAt);
             invitation.setExpiresAt(previousExpiresAt);
             invitation.setStatus(previousStatus);
             invitationRepository.save(invitation);
-            return ResponseEntity.internalServerError().body(new MessageResponse("Error: Unable to resend invitation email. Please try again later."));
+            return ResponseEntity.internalServerError().body(new MessageResponse("Erreur : impossible de renvoyer l'e-mail d'invitation. Veuillez réessayer plus tard."));
         }
     }
     
@@ -379,28 +379,28 @@ public class TeamController {
         UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(id));
         if (teamOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
         }
         
         Optional<TeamMember> requesterMemberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), id);
         boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
         boolean isPMOorLeader = requesterMemberOpt.isPresent() && (requesterMemberOpt.get().getRoles().contains(ERole.ROLE_PMO) || requesterMemberOpt.get().getRoles().contains(ERole.ROLE_TEAM_LEADER));
         if (!isOwner && !isPMOorLeader) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: You do not have permission to revoke invitations."));
+            return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous n'avez pas l'autorisation de révoquer des invitations."));
         }
         
         Optional<Invitation> invitationOpt = invitationRepository.findById(Objects.requireNonNull(invitationId));
         if (invitationOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Invitation not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : invitation introuvable."));
         }
         
         Invitation invitation = invitationOpt.get();
         if (!id.equals(invitation.getTeamId())) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Invitation does not belong to this team."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : l'invitation n'appartient pas à cette équipe."));
         }
         
         if (invitation.getStatus() == InvitationStatus.ACCEPTED) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Invitation already accepted."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : invitation déjà acceptée."));
         }
         
         invitation.setStatus(InvitationStatus.REVOKED);
@@ -408,7 +408,7 @@ public class TeamController {
         invitation.setToken(UUID.randomUUID().toString());
         invitationRepository.save(invitation);
         
-        return ResponseEntity.ok(new MessageResponse("Invitation revoked."));
+        return ResponseEntity.ok(new MessageResponse("Invitation révoquée."));
     }
     
     private boolean isExpired(Invitation invitation) {
@@ -428,24 +428,24 @@ public class TeamController {
         Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(id));
 
         if (teamOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: Team not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
         }
         
         Optional<TeamMember> requesterMemberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), id);
         boolean isPMO = requesterMemberOpt.isPresent() && requesterMemberOpt.get().getRoles().contains(ERole.ROLE_PMO);
 
-        if (!isPMO) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: Only PMO can update roles."));
+        if (!isPMO && !isOwner) {
+            return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous n'avez pas l'autorisation de modifier les rôles."));
         }
 
         Optional<User> memberUserOpt = userRepository.findById(Objects.requireNonNull(userId));
         if (memberUserOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable."));
         }
         
         Optional<TeamMember> memberShipOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userId, id);
         if (memberShipOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: User is not a member of this team."));
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : l'utilisateur n'est pas membre de cette équipe."));
         }
 
         Set<String> strRoles = rolesRequest.getRoles();
@@ -465,7 +465,7 @@ public class TeamController {
         memberShip.setRoles(roles);
         teamMemberRepository.save(memberShip);
 
-        return ResponseEntity.ok(new MessageResponse("User roles updated successfully!"));
+        return ResponseEntity.ok(new MessageResponse("Rôles de l'utilisateur mis à jour avec succès !"));
     }
 
     private boolean isProfileMemberOnly(User user) {
