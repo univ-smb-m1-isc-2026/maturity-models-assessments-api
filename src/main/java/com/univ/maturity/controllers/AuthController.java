@@ -293,11 +293,8 @@ public class AuthController {
 
     @PostMapping("/verify")
     public ResponseEntity<?> verifyUser(@Valid @RequestBody VerifyRequest verifyRequest) {
-        if (!userRepository.existsByEmail(verifyRequest.getEmail())) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable !"));
-        }
-
-        User user = userRepository.findByEmailIgnoreCase(verifyRequest.getEmail()).orElse(null);
+        String normalizedEmail = verifyRequest.getEmail() == null ? "" : verifyRequest.getEmail().trim().toLowerCase();
+        User user = userRepository.findByEmailIgnoreCase(normalizedEmail).orElse(null);
         if (user == null) {
             return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable !"));
         }

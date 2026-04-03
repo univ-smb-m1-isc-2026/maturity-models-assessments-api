@@ -82,6 +82,34 @@ public class TeamController {
         
         List<Team> teams = teamRepository.findAllById(teamIds);
 
+        enrichTeamsWithMembers(teams);
+
+        return ResponseEntity.ok(teams);
+    }
+
+    @GetMapping("/all")
+    @SuppressWarnings("null")
+    public ResponseEntity<?> getAllTeamsForPMO() {
+        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        User user = userRepository.findById(Objects.requireNonNull(userDetails.getId())).orElse(null);
+
+        if (user == null) {
+            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable."));
+        }
+
+        if (!user.getRoles().contains(ERole.ROLE_PMO)) {
+            return ResponseEntity.status(403).body(new MessageResponse("Erreur : seuls les PMO peuvent consulter toutes les équipes."));
+        }
+
+        List<Team> teams = teamRepository.findAll();
+
+        enrichTeamsWithMembers(teams);
+
+        return ResponseEntity.ok(teams);
+    }
+
+    private void enrichTeamsWithMembers(List<Team> teams) {
+
         for (Team team : teams) {
             List<TeamMember> teamMembers = teamMemberRepository.findByTeam_Id(team.getId());
             List<String> memberIds = teamMembers.stream()
@@ -99,8 +127,6 @@ public class TeamController {
 
             team.setMembers(members);
         }
-
-        return ResponseEntity.ok(teams);
     }
 
     @PostMapping

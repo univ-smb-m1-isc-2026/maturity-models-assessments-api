@@ -109,14 +109,6 @@ public class MaturityModelController {
             if (teamOpt.isEmpty()) {
                 return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
             }
-
-            boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
-            Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), teamId);
-            boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
-
-            if (!isOwner && !isPMO) {
-                return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous devez être le propriétaire de l'équipe ou PMO pour créer un modèle pour cette équipe."));
-            }
         }
 
         if (maturityModelRepository.existsByName(maturityModel.getName())) {
