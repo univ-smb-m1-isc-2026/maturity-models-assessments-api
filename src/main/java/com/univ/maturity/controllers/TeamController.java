@@ -417,56 +417,7 @@ public class TeamController {
 
     @PutMapping("/{id}/members/{userId}/roles")
     public ResponseEntity<?> updateMemberRoles(@PathVariable String id, @PathVariable String userId, @Valid @RequestBody UpdateUserRolesRequest rolesRequest) {
-        UserDetailsImpl userDetails = (UserDetailsImpl) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        User requester = userRepository.findById(Objects.requireNonNull(userDetails.getId())).orElse(null);
-        if (requester == null) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Error: User not found."));
-        }
-        if (isProfileMemberOnly(requester)) {
-            return ResponseEntity.status(403).body(new MessageResponse("Error: Team Member profiles cannot edit roles."));
-        }
-        Optional<Team> teamOpt = teamRepository.findById(Objects.requireNonNull(id));
-
-        if (teamOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
-        }
-        
-        boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
-        Optional<TeamMember> requesterMemberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), id);
-        boolean isPMO = requesterMemberOpt.isPresent() && requesterMemberOpt.get().getRoles().contains(ERole.ROLE_PMO);
-
-        if (!isPMO && !isOwner) {
-            return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous n'avez pas l'autorisation de modifier les rôles."));
-        }
-
-        Optional<User> memberUserOpt = userRepository.findById(Objects.requireNonNull(userId));
-        if (memberUserOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : utilisateur introuvable."));
-        }
-        
-        Optional<TeamMember> memberShipOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userId, id);
-        if (memberShipOpt.isEmpty()) {
-            return ResponseEntity.badRequest().body(new MessageResponse("Erreur : l'utilisateur n'est pas membre de cette équipe."));
-        }
-
-        Set<String> strRoles = rolesRequest.getRoles();
-        Set<ERole> roles = new HashSet<>();
-
-        if (strRoles != null) {
-            strRoles.forEach(role -> {
-                switch (role) {
-                    case "pmo" -> roles.add(ERole.ROLE_PMO);
-                    case "leader" -> roles.add(ERole.ROLE_TEAM_LEADER);
-                    default -> roles.add(ERole.ROLE_TEAM_MEMBER);
-                }
-            });
-        }
-
-        TeamMember memberShip = memberShipOpt.get();
-        memberShip.setRoles(roles);
-        teamMemberRepository.save(memberShip);
-
-        return ResponseEntity.ok(new MessageResponse("Rôles de l'utilisateur mis à jour avec succès !"));
+        return ResponseEntity.status(403).body(new MessageResponse("Erreur : la modification des rôles est désactivée."));
     }
 
     private boolean isProfileMemberOnly(User user) {

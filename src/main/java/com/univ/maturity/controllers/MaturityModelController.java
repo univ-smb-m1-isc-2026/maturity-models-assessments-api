@@ -62,7 +62,7 @@ public class MaturityModelController {
         if (memberOpt.isEmpty() && !isOwner) {
             return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous n'êtes pas membre de cette équipe."));
         }
-        return ResponseEntity.ok(maturityModelRepository.findByTeamId(teamId));
+        return ResponseEntity.ok(maturityModelRepository.findByTeamIdOrTeamIdIsNull(teamId));
     }
 
     @GetMapping("/{id}")
@@ -97,22 +97,26 @@ public class MaturityModelController {
         if (!isProfilePMO(requester)) {
             return ResponseEntity.status(403).body(new MessageResponse("Error: Only PMO profile can create maturity models."));
         }
-        
-        if (maturityModel.getTeamId() == null) {
-               return ResponseEntity.badRequest().body(new MessageResponse("Erreur : l'identifiant de l'équipe est requis."));
+
+        String teamId = maturityModel.getTeamId();
+        if (teamId != null && teamId.isBlank()) {
+            maturityModel.setTeamId(null);
+            teamId = null;
         }
-        
-        Optional<com.univ.maturity.Team> teamOpt = teamRepository.findById(Objects.requireNonNull(maturityModel.getTeamId()));
-        if (teamOpt.isEmpty()) {
-               return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
-        }
-        
-        boolean isOwner = teamOpt.isPresent() && teamOpt.get().getOwner().getId().equals(userDetails.getId());
-        Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), maturityModel.getTeamId());
-        boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
-        
-        if (!isOwner && !isPMO) {
-             return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous devez être le propriétaire de l'équipe ou PMO pour créer un modèle pour cette équipe."));
+
+        if (teamId != null) {
+            Optional<com.univ.maturity.Team> teamOpt = teamRepository.findById(teamId);
+            if (teamOpt.isEmpty()) {
+                return ResponseEntity.badRequest().body(new MessageResponse("Erreur : équipe introuvable."));
+            }
+
+            boolean isOwner = teamOpt.get().getOwner().getId().equals(userDetails.getId());
+            Optional<TeamMember> memberOpt = teamMemberRepository.findByUser_IdAndTeam_Id(userDetails.getId(), teamId);
+            boolean isPMO = memberOpt.isPresent() && memberOpt.get().getRoles().contains(ERole.ROLE_PMO);
+
+            if (!isOwner && !isPMO) {
+                return ResponseEntity.status(403).body(new MessageResponse("Erreur : vous devez être le propriétaire de l'équipe ou PMO pour créer un modèle pour cette équipe."));
+            }
         }
 
         if (maturityModelRepository.existsByName(maturityModel.getName())) {
